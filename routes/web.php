@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Controller;
+use App\Http\Controllers\RolController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -13,6 +15,10 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::get('/', function () {
-    return view('welcome');
+Route::prefix("rol")->controller(RolController::class)->group(function(){
+    Route::get('/', 'index');
+    Route::post('/', 'store');
+    Route::post('/update', 'update');
+    Route::post('/{Rol}', 'delete');
+    Route::get('/{id}', 'show');
 });

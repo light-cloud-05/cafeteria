@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Rol;
 use Illuminate\Http\Request;
 
-class ROLESController extends Controller
+class RolController extends Controller
 {
     ///Lista los elementos de una tabla MOSTRAR
     /**
@@ -13,33 +13,30 @@ class ROLESController extends Controller
      */
     public function index()
     {
-        //
+        return "hols";
     }
 
     ///guardar datos en la tabla CREAR
     public function store(Request $request)
     {
-        //
+        return "store";
     }
 
     //muestra solo un elemento de la tabla
-    /**
-     * Display the specified resource.
-     */
-    public function show(Rol $rOLES)
+    public function show(Rol $roles)
     {
-        //
+        return "show";
     }
 
     //Modificar un elemento MODIFICAR
-    public function update(Request $request, Rol $rOLES)
+    public function update(Request $request, Rol $roles)
     {
-        //
+        return "update";
     }
 
     //permite eleiminar un elemento de la tabla ELIMINAR  CRUD
-    public function destroy(Rol $rOLES)
+    public function destroy(Rol $roles)
     {
-        //
+        return "delete";
     }
 }

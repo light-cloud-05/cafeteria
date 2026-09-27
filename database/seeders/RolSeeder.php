@@ -11,10 +11,8 @@ class RolSeeder extends Seeder
     {
         $registros = [
             ['rol_id' => 1, 'nombre' => 'Administrador', 'estado' => 1],
-            ['rol_id' => 2, 'nombre' => 'Gerente de Tienda', 'estado' => 1],
-            ['rol_id' => 3, 'nombre' => 'Cajero', 'estado' => 1],
-            ['rol_id' => 4, 'nombre' => 'Encargado de Almacén', 'estado' => 1],
-            ['rol_id' => 5, 'nombre' => 'Auditor Interno', 'estado' => 1],
+            ['rol_id' => 2, 'nombre' => 'Cajero', 'estado' => 1],
+            ['rol_id' => 3, 'nombre' => 'Mesero', 'estado' => 1],
         ];
 
         foreach ($registros as $item) {

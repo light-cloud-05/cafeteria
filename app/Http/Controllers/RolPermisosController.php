@@ -9,7 +9,7 @@ class RolPermisosController extends Controller
 {
     public function index()
     {
-        //
+        return"rol";
     }
 
     public function store(Request $request)
