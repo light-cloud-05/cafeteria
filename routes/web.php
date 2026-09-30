@@ -5,6 +5,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\RolController;
 use App\Http\Controllers\PermisoController;
 use App\Http\Controllers\RolPermisosController;
+use App\Http\Controllers\SessionController;
 use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\ProveedorController;
@@ -24,14 +25,29 @@ use App\Http\Controllers\BitacorasController;
 |--------------------------------------------------------------------------
 */
 
-Route::get('/', function () {
-    return view('home');
-})->middleware('auth');
+// Rutas disponibles para personas que no han iniciado sesión.
+Route::middleware('guest')->group(function () {
+    Route::get('/login', [SessionController::class, 'index'])
+        ->name('login');
 
-Route::get('/home', function () { 
-    return view('home'); 
+    Route::post('/login', [SessionController::class, 'store'])
+        ->middleware('throttle:5,1')
+        ->name('login.store');
 });
 
+// Rutas que requieren una sesión iniciada.
+Route::middleware('auth')->group(function () {
+    Route::get('/', function () {
+        return redirect()->route('home');
+    });
+
+    Route::get('/home', function () {
+        return view('welcome');
+    })->name('home');
+
+    Route::post('/logout', [SessionController::class, 'destroy'])
+        ->name('logout');
+});
 /*/////////// 1. GESTIÓN DE USUARIOS, ROLES Y PERMISOS //////////// */
 
 // Usuarios
