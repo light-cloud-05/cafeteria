@@ -7,36 +7,67 @@ use Illuminate\Http\Request;
 
 class RolController extends Controller
 {
-    ///Lista los elementos de una tabla MOSTRAR
+    /// Lista los elementos de una tabla MOSTRAR
     /**
      * Display a listing of the resource.
      */
     public function index()
     {
-        return "hols";
+        $roles = Rol::all();
+        return response()->json([
+            'message' => 'Lista de roles obtenida con éxito',
+            'data' => $roles
+        ]);
     }
 
-    ///guardar datos en la tabla CREAR
+    /// Guardar datos en la tabla CREAR
     public function store(Request $request)
     {
-        return "store";
+        $request->validate([
+            'nombre' => 'required|string|unique:roles,nombre',
+            'estado' => 'required|boolean',
+        ]);
+
+        $rol = Rol::create($request->all());
+
+        return response()->json([
+            'message' => 'Rol guardado con éxito',
+            'data' => $rol
+        ], 201);
     }
 
-    //muestra solo un elemento de la tabla
-    public function show(Rol $roles)
+    // Muestra solo un elemento de la tabla
+    public function show(Rol $rol)
     {
-        return "show";
+        return response()->json([
+            'message' => 'Rol encontrado con éxito',
+            'data' => $rol
+        ]);
     }
 
-    //Modificar un elemento MODIFICAR
-    public function update(Request $request, Rol $roles)
+    // Modificar un elemento MODIFICAR
+    public function update(Request $request, Rol $rol)
     {
-        return "update";
+        $request->validate([
+            'nombre' => 'sometimes|required|string|unique:roles,nombre,' . $rol->id,
+            'estado' => 'sometimes|required|boolean',
+        ]);
+
+        $rol->update($request->all());
+
+        return response()->json([
+            'message' => 'Rol modificado con éxito',
+            'data' => $rol
+        ]);
     }
 
-    //permite eleiminar un elemento de la tabla ELIMINAR  CRUD
-    public function destroy(Rol $roles)
+    // Permite eliminar un elemento de la tabla ELIMINAR CRUD
+    public function destroy(Rol $rol)
     {
-        return "delete";
+        $rol->delete();
+
+        return response()->json([
+            'message' => 'Rol eliminado con éxito'
+        ]);
     }
 }
