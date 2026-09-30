@@ -178,3 +178,12 @@ input[aria-invalid="true"] {
         margin-bottom: 22px;
     }
 }
+.ayuda a {
+    color: #654631;
+    font-weight: 600;
+    text-underline-offset: 3px;
+}
+
+.ayuda a:hover {
+    color: #34271f;
+}

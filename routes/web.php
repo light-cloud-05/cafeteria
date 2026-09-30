@@ -6,6 +6,7 @@ use App\Http\Controllers\RolController;
 use App\Http\Controllers\PermisoController;
 use App\Http\Controllers\RolPermisosController;
 use App\Http\Controllers\SessionController;
+use App\Http\Controllers\PasswordController;
 use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\CategoriaController;
 use App\Http\Controllers\ProveedorController;
@@ -30,6 +31,19 @@ Route::middleware('guest')->group(function () {
     Route::post('/login', [SessionController::class, 'store'])
         ->middleware('throttle:5,1')
         ->name('login.store');
+    Route::get('/recuperar-contrasena', [PasswordController::class, 'index'])
+    ->name('password.request');
+
+Route::post('/recuperar-contrasena', [PasswordController::class, 'store'])
+    ->middleware('throttle:3,1')
+    ->name('password.email');
+
+Route::get('/restablecer-contrasena/{token}', [PasswordController::class, 'edit'])
+    ->name('password.reset');
+
+Route::post('/restablecer-contrasena', [PasswordController::class, 'update'])
+    ->middleware('throttle:5,1')
+    ->name('password.update');    
 });
 
 Route::middleware('auth')->group(function () {

@@ -69,6 +69,23 @@
             </div>
 
             <div class="campo">
+            <label for="email">Correo electrónico de recuperación</label>
+
+            <input
+                type="email"
+                id="email"
+                name="email"
+                value="{{ old('email', $usuario->email) }}"
+                maxlength="255"
+                required
+            >
+
+            @error('email')
+                <p class="error-campo" role="alert">{{ $message }}</p>
+            @enderror
+            </div>
+
+            <div class="campo">
                 <label for="telefono">Teléfono (opcional)</label>
 
                 <input

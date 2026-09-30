@@ -117,6 +117,11 @@ class UserController extends Controller
         if ($usuario !== null) {
             $usuarioUnico->ignore($usuario);
         }
+        $emailUnico = Rule::unique('usuarios', 'email');
+
+            if ($usuario !== null) {
+            $emailUnico->ignore($usuario);
+         }
 
         return $request->validate([
             'nombreCompleto' => ['required', 'string', 'max:255'],
@@ -146,6 +151,7 @@ class UserController extends Controller
                 'max:64',
                 'confirmed',
             ],
+            'email' => ['required', 'email', 'max:255', $emailUnico],
         ], [
             'nombreCompleto.required' => 'Escribe el nombre completo.',
             'nombreCompleto.max' => 'El nombre admite hasta 255 caracteres.',
@@ -169,6 +175,11 @@ class UserController extends Controller
             'password.min' => 'La contraseña debe tener al menos 8 caracteres.',
             'password.max' => 'La contraseña admite hasta 64 caracteres.',
             'password.confirmed' => 'Las contraseñas no coinciden.',
+            'email.required' => 'Escribe el correo electrónico.',
+            'email.email' => 'Escribe un correo electrónico válido.',
+            'email.max' => 'El correo admite hasta 255 caracteres.',
+            'email.unique' => 'Ese correo ya está asociado a otra cuenta.',
         ]);
+        
     }
 }

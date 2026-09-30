@@ -102,6 +102,11 @@
                     Ingresar
                 </button>
             </form>
+            <p class="ayuda">
+    <a href="{{ route('password.request') }}">
+        ¿Olvidaste tu contraseña?
+    </a>
+</p>
 
             <p class="ayuda">
                 Si necesitas ayuda para acceder, contacta
