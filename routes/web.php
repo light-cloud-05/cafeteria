@@ -172,3 +172,8 @@ Route::controller(PromocionesController::class)->middleware('auth.admin')->group
 
 // Bitácora / Logs
 Route::get('/admin/bitacora', [BitacorasController::class, 'index'])->middleware('auth.admin')->name('admin.indexbitacora');
+
+//
+Route::get('/prueba-permisos', function () {
+    return 'Acceso autorizado: tienes el permiso gestion_usuarios.';
+})->middleware(['auth', 'permiso:gestion_usuarios']);

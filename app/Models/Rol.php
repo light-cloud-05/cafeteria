@@ -16,4 +16,15 @@ class Rol extends Model
         'nombre',
         'estado',
     ];
+    public function permisos()
+    {
+       return $this->belongsToMany(
+           Permiso::class,
+             'rol_permisos',
+             'idRol',
+             'idPermiso',
+             'rol_id',
+             'id'
+    );
+    }
 }

@@ -11,9 +11,9 @@ class RolPermiso extends Model
 
     protected $table = 'rol_permisos';
 
-    protected $fillable = [
-        'rol_id',
-        'permiso_id',
-        'fechaAsignacion'
+   protected $fillable = [
+       'idRol',
+       'idPermiso',
+       'fechaAsignacion',
     ];
 }

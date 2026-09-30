@@ -10,7 +10,7 @@ class User extends Authenticatable
 {
     use HasFactory, Notifiable;
 
-    protected $table = 'usuarios'; // 👈 ESTA LÍNEA ES LA QUE FALTA O ESTÁ MAL ESCRITA
+    protected $table = 'usuarios'; 
 
     protected $fillable = [
         'rol_id',
@@ -30,5 +30,30 @@ class User extends Authenticatable
         return [
             'password' => 'hashed',
         ];
+    }
+    public function rol()
+    {
+        return $this->belongsTo(
+           Rol::class,
+              'rol_id',
+              'rol_id'
+        );
+    }
+
+    public function tienePermiso(string $nombre): bool
+    {
+         if ((int) $this->estado !== 1) {
+            return false;
+        }
+
+    $rol = $this->rol;
+
+         if (! $rol || (int) $rol->estado !== 1) {
+            return false;
+        }
+
+       return $rol->permisos()
+          ->where('permisos.nombre', $nombre)
+          ->exists();
     }
 }
