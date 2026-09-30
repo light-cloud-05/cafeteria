@@ -30,6 +30,14 @@
                         Categorías
                     </a>
                 @endif
+                @if (auth()->user()->tienePermiso('gestion_proveedores'))
+                     <a
+                          href="{{ route('admin.indexproveedor') }}"
+                          class="{{ request()->is('admin/proveedores*') ? 'activo' : '' }}"
+                         >
+                        Proveedores
+                     </a>
+                 @endif
             </nav>
         </aside>
 

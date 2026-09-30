@@ -1,0 +1,180 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding: 28px 16px;
+    display: grid;
+    place-items: center;
+    font-family: "Segoe UI", Arial, sans-serif;
+    color: #34271f;
+    background:
+        radial-gradient(circle at top left, #e8d5bc, transparent 55%),
+        #f6f1ea;
+}
+
+.login {
+    width: 100%;
+    max-width: 440px;
+}
+
+.marca {
+    margin-bottom: 28px;
+    text-align: center;
+}
+
+.marca-icono {
+    display: grid;
+    place-items: center;
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 14px;
+    border-radius: 20px;
+    background: #50392c;
+    color: #fff;
+}
+
+.marca-icono svg {
+    width: 34px;
+    height: 34px;
+}
+
+.marca-nombre {
+    margin: 0;
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: 6px;
+}
+
+.marca-descripcion {
+    margin: 8px 0 0;
+    color: #746455;
+    font-size: 14px;
+}
+
+.tarjeta-login {
+    padding: 36px;
+    border: 1px solid #e7ddd1;
+    border-radius: 20px;
+    background: #fffdfb;
+    box-shadow: 0 16px 48px rgb(65 43 26 / 9%);
+}
+
+h1 {
+    margin: 0 0 10px;
+    font-size: 26px;
+}
+
+.introduccion {
+    margin: 0 0 26px;
+    color: #746455;
+    font-size: 15px;
+    line-height: 1.6;
+}
+
+.campo {
+    margin-bottom: 20px;
+}
+
+label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+input {
+    width: 100%;
+    min-height: 48px;
+    padding: 12px 14px;
+    border: 1px solid #bfb2a4;
+    border-radius: 9px;
+    background: #fff;
+    color: #34271f;
+    font: inherit;
+}
+
+input::placeholder {
+    color: #807367;
+}
+
+input:focus {
+    border-color: #79553c;
+    outline: 3px solid #eee0cf;
+}
+
+input[aria-invalid="true"] {
+    border-color: #b42318;
+}
+
+.boton-ingresar {
+    width: 100%;
+    min-height: 48px;
+    margin-top: 4px;
+    padding: 12px;
+    border: 0;
+    border-radius: 9px;
+    background: #654631;
+    color: white;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.boton-ingresar:hover {
+    background: #493020;
+}
+
+.boton-ingresar:focus-visible {
+    outline: 3px solid #a47142;
+    outline-offset: 3px;
+}
+
+.aviso-exito {
+    margin-bottom: 20px;
+    padding: 12px 14px;
+    border: 1px solid #b8ddc5;
+    border-radius: 9px;
+    background: #edf8f0;
+    color: #245c38;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.error-campo {
+    margin: 7px 0 0;
+    color: #a32219;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.ayuda {
+    margin: 22px 0 0;
+    padding-top: 20px;
+    border-top: 1px solid #eee5db;
+    color: #746455;
+    font-size: 13px;
+    line-height: 1.6;
+    text-align: center;
+}
+
+.pie {
+    margin-top: 22px;
+    color: #746455;
+    font-size: 13px;
+    text-align: center;
+}
+
+@media (max-width: 480px) {
+    .tarjeta-login {
+        padding: 26px 22px;
+    }
+
+    .marca {
+        margin-bottom: 22px;
+    }
+}

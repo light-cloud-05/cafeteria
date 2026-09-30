@@ -4,68 +4,100 @@ namespace App\Http\Controllers;
 
 use App\Models\Proveedor;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class ProveedorController extends Controller
 {
     public function index()
     {
-        // Listar todos los proveedores registrados
-        $proveedores = Proveedor::all();
-        return response()->json($proveedores);
+        $proveedores = Proveedor::orderBy('nombre')->get();
+
+        return view('proveedores.index', compact('proveedores'));
+    }
+
+    public function create()
+    {
+        $proveedor = new Proveedor();
+        $proveedor->estado = 1;
+
+        return view('proveedores.form', compact('proveedor'));
     }
 
     public function store(Request $request)
     {
-        // Validar los datos de entrada para registrar un nuevo proveedor
-        $request->validate([
-            'nombre' => 'required|string|unique:proveedores,nombre',
-            'telefono' => 'nullable|string',
-            'estado' => 'required|boolean',
-        ]);
+        $datos = $this->validarDatos($request);
 
-        $proveedor = Proveedor::create($request->all());
+        Proveedor::create($datos);
 
-        return response()->json([
-            'message' => 'Proveedor registrado con éxito',
-            'data' => $proveedor
-        ], 201);
+        return redirect()
+            ->route('admin.indexproveedor')
+            ->with('success', 'Proveedor registrado correctamente.');
     }
 
     public function show($id)
     {
-        // Mostrar un proveedor específico por su ID
         $proveedor = Proveedor::findOrFail($id);
-        return response()->json($proveedor);
+
+        return redirect()->route('admin.editproveedor', $proveedor->id);
+    }
+
+    public function edit($id)
+    {
+        $proveedor = Proveedor::findOrFail($id);
+
+        return view('proveedores.form', compact('proveedor'));
     }
 
     public function update(Request $request, $id)
     {
-        // Buscar el proveedor existente o lanzar error 404
         $proveedor = Proveedor::findOrFail($id);
 
-        // Validar los campos de manera opcional (sometimes) para actualizaciones
-        $request->validate([
-            'nombre' => 'sometimes|required|string|unique:proveedores,nombre,' . $id,
-            'telefono' => 'nullable|string',
-            'estado' => 'sometimes|required|boolean',
-        ]);
+        $datos = $this->validarDatos($request, $proveedor);
 
-        $proveedor->update($request->all());
+        $proveedor->update($datos);
 
-        return response()->json([
-            'message' => 'Proveedor actualizado con éxito',
-            'data' => $proveedor
-        ]);
+        return redirect()
+            ->route('admin.indexproveedor')
+            ->with('success', 'Proveedor actualizado correctamente.');
     }
 
     public function destroy($id)
     {
-        // Eliminar el proveedor del sistema
         $proveedor = Proveedor::findOrFail($id);
-        $proveedor->delete();
 
-        return response()->json([
-            'message' => 'Proveedor eliminado con éxito'
+        $proveedor->update(['estado' => 0]);
+
+        return redirect()
+            ->route('admin.indexproveedor')
+            ->with('success', 'Proveedor desactivado correctamente.');
+    }
+
+    private function validarDatos(
+        Request $request,
+        ?Proveedor $proveedor = null
+    ): array {
+        $nombreUnico = Rule::unique('proveedores', 'nombre');
+
+        if ($proveedor !== null) {
+            $nombreUnico->ignore($proveedor);
+        }
+
+        return $request->validate([
+            'nombre' => [
+                'required',
+                'string',
+                'max:255',
+                $nombreUnico,
+            ],
+            'telefono' => ['nullable', 'string', 'max:30'],
+            'estado' => ['required', 'boolean'],
+        ], [
+            'nombre.required' => 'Escribe el nombre del proveedor.',
+            'nombre.unique' => 'Ya existe un proveedor con ese nombre.',
+            'nombre.max' => 'El nombre admite hasta 255 caracteres.',
+            'telefono.max' => 'El teléfono admite hasta 30 caracteres.',
+            'estado.required' => 'Selecciona el estado.',
+            'estado.boolean' => 'El estado seleccionado no es válido.',
         ]);
     }
 }
