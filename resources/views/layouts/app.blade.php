@@ -30,6 +30,14 @@
                         Categorías
                     </a>
                 @endif
+                @if (auth()->user()->tienePermiso('gestion_productos'))
+                     <a
+                        href="{{ route('admin.indexproducto') }}"
+                        class="{{ request()->is('admin/productos*') ? 'activo' : '' }}"
+                      >
+                     Productos
+                     </a>
+                @endif
                 @if (auth()->user()->tienePermiso('gestion_proveedores'))
                      <a
                           href="{{ route('admin.indexproveedor') }}"

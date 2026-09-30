@@ -34,21 +34,21 @@ class ProveedorController extends Controller
             ->with('success', 'Proveedor registrado correctamente.');
     }
 
-    public function show($id)
+    public function show(int $id)
     {
         $proveedor = Proveedor::findOrFail($id);
 
         return redirect()->route('admin.editproveedor', $proveedor->id);
     }
 
-    public function edit($id)
+    public function edit(int $id)
     {
         $proveedor = Proveedor::findOrFail($id);
 
         return view('proveedores.form', compact('proveedor'));
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, int $id)
     {
         $proveedor = Proveedor::findOrFail($id);
 
@@ -61,7 +61,7 @@ class ProveedorController extends Controller
             ->with('success', 'Proveedor actualizado correctamente.');
     }
 
-    public function destroy($id)
+    public function destroy(int $id)
     {
         $proveedor = Proveedor::findOrFail($id);
 
