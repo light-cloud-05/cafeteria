@@ -4,95 +4,98 @@ namespace App\Http\Controllers;
 
 use App\Models\Categoria;
 use Illuminate\Http\Request;
-use App\Http\Controllers\Controller;
+use Illuminate\Validation\Rule;
 
 class CategoriaController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
-        // Obtenemos todas las categorías de la base de datos
-        $categorias = Categoria::all();
+        $categorias = Categoria::orderBy('nombre')->get();
 
-        // Retornamos la vista de Blade ubicada en resources/views/categorias/index.blade.php
         return view('categorias.index', compact('categorias'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
-        return view('categorias.create');
+        $categoria = new Categoria();
+        $categoria->estado = true;
+
+        return view('categorias.form', compact('categoria'));
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        $request->validate([
-            'nombre' => 'required|string|max:255|unique:categorias,nombre',
-            'descripcion' => 'nullable|string|max:500',
-            'estado' => 'required|boolean'
-        ]);
+        $datos = $this->validarDatos($request);
 
-        Categoria::create($request->all());
+        Categoria::create($datos);
 
-        return redirect()->route('admin.indexcategoria')
-            ->with('success', 'Categoría creada con éxito');
+        return redirect()
+            ->route('admin.indexcategoria')
+            ->with('success', 'Categoría registrada correctamente.');
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show($id)
     {
-        $categoria = Categoria::findOrFail($id);
-
-        return view('categorias.show', compact('categoria'));
+        return redirect()->route('admin.editarcategoria', $id);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit($id)
     {
         $categoria = Categoria::findOrFail($id);
 
-        return view('categorias.edit', compact('categoria'));
+        return view('categorias.form', compact('categoria'));
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, $id)
     {
         $categoria = Categoria::findOrFail($id);
 
-        $request->validate([
-            'nombre' => 'sometimes|required|string|max:255|unique:categorias,nombre,' . $id . ',id',
-            'descripcion' => 'nullable|string|max:500',
-            'estado' => 'sometimes|required|boolean'
-        ]);
+        $datos = $this->validarDatos($request, $categoria);
 
-        $categoria->update($request->all());
+        $categoria->update($datos);
 
-        return redirect()->route('admin.indexcategoria')
-            ->with('success', 'Categoría actualizada con éxito');
+        return redirect()
+            ->route('admin.indexcategoria')
+            ->with('success', 'Categoría actualizada correctamente.');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
     public function destroy($id)
     {
         $categoria = Categoria::findOrFail($id);
-        $categoria->delete();
 
-        return redirect()->route('admin.indexcategoria')
-            ->with('success', 'Categoría eliminada con éxito');
+        $categoria->update(['estado' => false]);
+
+        return redirect()
+            ->route('admin.indexcategoria')
+            ->with('success', 'Categoría desactivada correctamente.');
+    }
+
+    private function validarDatos(
+        Request $request,
+        ?Categoria $categoria = null
+    ): array {
+        $nombreUnico = Rule::unique('categorias', 'nombre');
+
+        if ($categoria !== null) {
+            $nombreUnico->ignore($categoria);
+        }
+
+        return $request->validate([
+            'nombre' => [
+                'required',
+                'string',
+                'max:255',
+                $nombreUnico,
+            ],
+            'descripcion' => ['nullable', 'string', 'max:255'],
+            'estado' => ['required', 'boolean'],
+        ], [
+            'nombre.required' => 'Escribe el nombre de la categoría.',
+            'nombre.unique' => 'Ya existe una categoría con ese nombre.',
+            'nombre.max' => 'El nombre admite hasta 255 caracteres.',
+            'descripcion.max' => 'La descripción admite hasta 255 caracteres.',
+            'estado.required' => 'Selecciona el estado.',
+            'estado.boolean' => 'El estado seleccionado no es válido.',
+        ]);
     }
 }
