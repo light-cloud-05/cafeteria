@@ -9,16 +9,37 @@ class PermisoSeeder extends Seeder
 {
     public function run(): void
     {
-        $registros = [
-            ['id' => 1, 'nombre' => 'gestion_usuarios', 'descripcion' => 'Crear, editar y eliminar usuarios del sistema'],
-            ['id' => 2, 'nombre' => 'gestion_inventario', 'descripcion' => 'Registrar entradas, salidas y modificar stock de productos'],
-            ['id' => 3, 'nombre' => 'procesar_ventas', 'descripcion' => 'Registrar pedidos, emitir cobros y comprobantes'],
-            ['id' => 4, 'nombre' => 'cierre_caja', 'descripcion' => 'Realizar aperturas, arqueos y cierres de caja diarios'],
-            ['id' => 5, 'nombre' => 'ver_reportes', 'descripcion' => 'Acceso a paneles analíticos y reportes consolidados'],
+        $permisos = [
+            'gestion_usuarios' => 'Administrar cuentas de usuarios',
+            'gestion_roles' => 'Administrar roles y permisos',
+            'gestion_categorias' => 'Administrar categorías',
+            'gestion_productos' => 'Administrar productos',
+            'gestion_proveedores' => 'Administrar proveedores',
+
+            'registrar_entradas' => 'Registrar entradas de inventario',
+            'registrar_salidas' => 'Registrar salidas de inventario',
+            'registrar_ajustes' => 'Registrar ajustes de inventario',
+            'consultar_stock' => 'Consultar existencias actuales',
+            'consultar_stock_minimo' => 'Consultar productos con stock mínimo',
+            'buscar_productos' => 'Buscar productos en el catálogo',
+            'ver_agotados' => 'Consultar avisos de productos agotados',
+
+            'registrar_pedidos' => 'Registrar pedidos',
+            'modificar_pedidos' => 'Modificar o cancelar pedidos sin cobrar',
+            'cambiar_estado_pedidos' => 'Actualizar el estado de los pedidos',
+            'cobrar_ventas' => 'Registrar ventas y pagos',
+            'consultar_historial_pedidos' => 'Consultar historial de pedidos',
+
+            'ver_reportes' => 'Consultar reportes de ventas e inventario',
+            'gestion_promociones' => 'Administrar promociones y descuentos',
+            'consultar_bitacora' => 'Consultar la bitácora del sistema',
         ];
 
-        foreach ($registros as $item) {
-            Permiso::create($item);
+        foreach ($permisos as $nombre => $descripcion) {
+            Permiso::updateOrCreate(
+                ['nombre' => $nombre],
+                ['descripcion' => $descripcion]
+            );
         }
     }
 }

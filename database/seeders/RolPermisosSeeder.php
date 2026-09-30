@@ -3,33 +3,70 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use App\Models\RolPermiso;
+use Illuminate\Support\Facades\DB;
+use App\Models\Rol;
+use App\Models\Permiso;
 
 class RolPermisosSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
-        $rolPermisos = [
-            ['idRol' => 1, 'idPermiso' => 1, 'fechaAsignacion' => now()],
-            ['idRol' => 1, 'idPermiso' => 2, 'fechaAsignacion' => now()],
-            ['idRol' => 1, 'idPermiso' => 3, 'fechaAsignacion' => now()],
-            ['idRol' => 1, 'idPermiso' => 4, 'fechaAsignacion' => now()],
-            ['idRol' => 1, 'idPermiso' => 5, 'fechaAsignacion' => now()],
-            ['idRol' => 2, 'idPermiso' => 2, 'fechaAsignacion' => now()],
-            ['idRol' => 2, 'idPermiso' => 3, 'fechaAsignacion' => now()],
-            ['idRol' => 2, 'idPermiso' => 4, 'fechaAsignacion' => now()],
-            ['idRol' => 2, 'idPermiso' => 5, 'fechaAsignacion' => now()],
-            ['idRol' => 3, 'idPermiso' => 3, 'fechaAsignacion' => now()],
-            ['idRol' => 3, 'idPermiso' => 4, 'fechaAsignacion' => now()],
-            ['idRol' => 4, 'idPermiso' => 2, 'fechaAsignacion' => now()],
-            ['idRol' => 5, 'idPermiso' => 5, 'fechaAsignacion' => now()],
+        $asignaciones = [
+            'Administrador' => [
+                'gestion_usuarios',
+                'gestion_roles',
+                'gestion_categorias',
+                'gestion_productos',
+                'gestion_proveedores',
+                'registrar_entradas',
+                'registrar_salidas',
+                'registrar_ajustes',
+                'consultar_stock',
+                'consultar_stock_minimo',
+                'buscar_productos',
+                'ver_agotados',
+                'consultar_historial_pedidos',
+                'ver_reportes',
+                'gestion_promociones',
+                'consultar_bitacora',
+            ],
+
+            'Cajero' => [
+                'registrar_salidas',
+                'consultar_stock',
+                'consultar_stock_minimo',
+                'ver_agotados',
+                'cobrar_ventas',
+            ],
+
+            'Mesero' => [
+                'consultar_stock',
+                'buscar_productos',
+                'ver_agotados',
+                'registrar_pedidos',
+                'modificar_pedidos',
+                'cambiar_estado_pedidos',
+                'consultar_historial_pedidos',
+            ],
         ];
 
-        foreach ($rolPermisos as $item) {
-            RolPermiso::create($item);
-        }
+        DB::transaction(function () use ($asignaciones) {
+            foreach ($asignaciones as $nombreRol => $nombresPermisos) {
+                $rol = Rol::where('nombre', $nombreRol)->firstOrFail();
+
+                $relaciones = [];
+
+                foreach ($nombresPermisos as $nombrePermiso) {
+                    $permiso = Permiso::where('nombre', $nombrePermiso)
+                        ->firstOrFail();
+
+                    $relaciones[$permiso->id] = [
+                        'fechaAsignacion' => now(),
+                    ];
+                }
+
+                $rol->permisos()->sync($relaciones);
+            }
+        });
     }
 }
