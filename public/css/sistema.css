@@ -241,3 +241,54 @@ textarea {
         padding: 20px;
     }
 }
+.grupo-permisos {
+    margin: 24px 0;
+    padding: 0;
+    border: 0;
+    min-width: 0;
+}
+
+.grupo-permisos legend {
+    margin-bottom: 16px;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.lista-permisos {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 12px;
+}
+
+.opcion-permiso {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin: 0;
+    padding: 16px;
+    border: 1px solid #e7e2da;
+    border-radius: 8px;
+    font-weight: normal;
+    line-height: 1.5;
+    cursor: pointer;
+}
+
+.opcion-permiso input[type="checkbox"] {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    margin: 2px 0 0;
+    accent-color: #70513f;
+}
+
+.opcion-permiso small {
+    display: block;
+    margin-top: 5px;
+    color: #666;
+}
+
+@media (max-width: 400px) {
+    .lista-permisos {
+        grid-template-columns: 1fr;
+    }
+}

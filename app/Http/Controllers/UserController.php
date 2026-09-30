@@ -2,124 +2,173 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Rol;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class UserController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
-        // Listar todos los usuarios con su respectivo rol relacionado
-        $usuarios = User::with('rol')->get();
-        return response()->json([
-            'message' => 'Lista de usuarios obtenida con éxito',
-            'data' => $usuarios
-        ]);
+        $usuarios = User::with('rol')
+            ->orderBy('nombreCompleto')
+            ->get();
+
+        return view('usuarios.index', compact('usuarios'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
     public function create()
     {
-        // Opcional para APIs (generalmente omitido, pero se mantiene por compatibilidad de estructura)
-        return response()->json(['message' => 'Vista de creación no disponible en API'], 404);
+        $usuario = new User();
+        $usuario->estado = 1;
+
+        return $this->formulario($usuario);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
-        // Validar los datos de entrada para registrar un nuevo usuario
-        $request->validate([
-            'rol_id' => 'required|exists:roles,id',
-            'nombreCompleto' => 'required|string|max:255',
-            'nombreUsuario' => 'required|string|max:255|unique:users,nombreUsuario',
-            'password' => 'required|string|min:6',
-            'telefono' => 'nullable|string|max:50',
-            'estado' => 'required|boolean',
-        ]);
+        $datos = $this->validarDatos($request);
 
-        $data = $request->all();
-        $data['password'] = Hash::make($request->password);
+        $datos['password'] = Hash::make($datos['password']);
 
-        $usuario = User::create($data);
+        User::create($datos);
 
-        return response()->json([
-            'message' => 'Usuario registrado con éxito',
-            'data' => $usuario
-        ], 201);
+        return redirect()
+            ->route('admin.indexusuario')
+            ->with('success', 'Usuario registrado correctamente.');
     }
 
-    /**
-     * Display the specified resource.
-     */
     public function show(User $usuario)
     {
-        // Mostrar un usuario específico cargando su rol
-        $usuario->load('rol');
-        return response()->json([
-            'message' => 'Usuario encontrado con éxito',
-            'data' => $usuario
-        ]);
+        return redirect()->route('admin.editusuario', $usuario->id);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
     public function edit(User $usuario)
     {
-        // Opcional para APIs
-        return response()->json(['message' => 'Vista de edición no disponible en API'], 404);
+        return $this->formulario($usuario);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, User $usuario)
     {
-        // Validar los campos de manera opcional (sometimes) para actualizaciones parciales o totales
-        $request->validate([
-            'rol_id' => 'sometimes|required|exists:roles,id',
-            'nombreCompleto' => 'sometimes|required|string|max:255',
-            'nombreUsuario' => 'sometimes|required|string|max:255|unique:users,nombreUsuario,' . $usuario->id,
-            'password' => 'sometimes|required|string|min:6',
-            'telefono' => 'nullable|string|max:50',
-            'estado' => 'sometimes|required|boolean',
-        ]);
+        $datos = $this->validarDatos($request, $usuario);
 
-        $data = $request->all();
+        // Evitar que el usuario conectado se quite su propio acceso.
+        if ((int) $usuario->id === (int) $request->user()->id) {
+            if ((int) $datos['estado'] !== 1) {
+                throw ValidationException::withMessages([
+                    'estado' => 'No puedes desactivar tu propia cuenta.',
+                ]);
+            }
 
-        // Si se envía una nueva contraseña, hashearla antes de actualizar
-        if ($request->filled('password')) {
-            $data['password'] = Hash::make($request->password);
-        } else {
-            unset($data['password']);
+            if ((int) $datos['rol_id'] !== (int) $usuario->rol_id) {
+                throw ValidationException::withMessages([
+                    'rol_id' => 'No puedes cambiar tu propio rol.',
+                ]);
+            }
         }
 
-        $usuario->update($data);
+        if ($request->filled('password')) {
+            $datos['password'] = Hash::make($datos['password']);
+        } else {
+            unset($datos['password']);
+        }
 
-        return response()->json([
-            'message' => 'Usuario actualizado con éxito',
-            'data' => $usuario
-        ]);
+        $usuario->update($datos);
+
+        return redirect()
+            ->route('admin.indexusuario')
+            ->with('success', 'Usuario actualizado correctamente.');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(User $usuario)
+    public function destroy(Request $request, User $usuario)
     {
-        // Eliminar el usuario del sistema
-        $usuario->delete();
+        if ((int) $usuario->id === (int) $request->user()->id) {
+            return redirect()
+                ->route('admin.indexusuario')
+                ->with('error', 'No puedes desactivar tu propia cuenta.');
+        }
 
-        return response()->json([
-            'message' => 'Usuario eliminado con éxito'
+        // Conservamos la cuenta y sus operaciones anteriores.
+        $usuario->update(['estado' => 0]);
+
+        return redirect()
+            ->route('admin.indexusuario')
+            ->with('success', 'Usuario desactivado correctamente.');
+    }
+
+    private function formulario(User $usuario)
+    {
+        $roles = Rol::where('estado', 1)
+            ->orderBy('nombre')
+            ->get();
+
+        return view('usuarios.form', compact('usuario', 'roles'));
+    }
+
+    private function validarDatos(
+        Request $request,
+        ?User $usuario = null
+    ): array {
+        $usuarioUnico = Rule::unique('usuarios', 'nombreUsuario');
+
+        if ($usuario !== null) {
+            $usuarioUnico->ignore($usuario);
+        }
+
+        return $request->validate([
+            'nombreCompleto' => ['required', 'string', 'max:255'],
+
+            'nombreUsuario' => [
+                'required',
+                'string',
+                'max:100',
+                'regex:/^[a-zA-Z0-9._-]+$/',
+                $usuarioUnico,
+            ],
+
+            'telefono' => ['nullable', 'string', 'max:30'],
+
+            'rol_id' => [
+                'required',
+                'integer',
+                Rule::exists('roles', 'rol_id')->where('estado', 1),
+            ],
+
+            'estado' => ['required', 'boolean'],
+
+            'password' => [
+                $usuario === null ? 'required' : 'nullable',
+                'string',
+                'min:8',
+                'max:64',
+                'confirmed',
+            ],
+        ], [
+            'nombreCompleto.required' => 'Escribe el nombre completo.',
+            'nombreCompleto.max' => 'El nombre admite hasta 255 caracteres.',
+
+            'nombreUsuario.required' => 'Escribe el nombre de usuario.',
+            'nombreUsuario.max' => 'El usuario admite hasta 100 caracteres.',
+            'nombreUsuario.regex' =>
+                'Usa letras sin acentos, números, puntos, guiones o guiones bajos.',
+            'nombreUsuario.unique' => 'Ese nombre de usuario ya está registrado.',
+
+            'telefono.max' => 'El teléfono admite hasta 30 caracteres.',
+
+            'rol_id.required' => 'Selecciona un rol.',
+            'rol_id.integer' => 'El rol seleccionado no es válido.',
+            'rol_id.exists' => 'Selecciona un rol existente y activo.',
+
+            'estado.required' => 'Selecciona el estado de la cuenta.',
+            'estado.boolean' => 'El estado seleccionado no es válido.',
+
+            'password.required' => 'Escribe una contraseña.',
+            'password.min' => 'La contraseña debe tener al menos 8 caracteres.',
+            'password.max' => 'La contraseña admite hasta 64 caracteres.',
+            'password.confirmed' => 'Las contraseñas no coinciden.',
         ]);
     }
 }

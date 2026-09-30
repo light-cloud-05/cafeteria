@@ -30,6 +30,22 @@
                         Categorías
                     </a>
                 @endif
+                @if (auth()->user()->tienePermiso('gestion_usuarios'))
+                     <a
+                         href="{{ route('admin.indexusuario') }}"
+                         class="{{ request()->is('admin/usuarios*') ? 'activo' : '' }}"
+                     >
+                       Usuarios
+                     </a>
+                @endif
+                @if (auth()->user()->tienePermiso('gestion_roles'))
+                     <a
+                        href="{{ route('admin.indexrol') }}"
+                        class="{{ request()->is('admin/roles*') ? 'activo' : '' }}"
+                      >
+                        Roles y permisos
+                     </a>
+                @endif
                 @if (auth()->user()->tienePermiso('gestion_productos'))
                      <a
                         href="{{ route('admin.indexproducto') }}"

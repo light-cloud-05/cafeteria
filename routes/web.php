@@ -82,40 +82,25 @@ Route::middleware('auth')->prefix('admin')->group(function () {
                 ->name('admin.destroyusuario');
         });
 
-    // ROLES
-    Route::controller(RolController::class)
-        ->middleware('permiso:gestion_roles')
-        ->group(function () {
-            Route::get('/roles', 'index')
-                ->name('admin.indexrol');
+// ROLES Y PERMISOS
+Route::middleware('permiso:gestion_roles')->group(function () {
+    Route::get('/roles', [RolController::class, 'index'])
+        ->name('admin.indexrol');
 
-            Route::get('/roles/crear', 'create')
-                ->name('admin.crearrol');
+    Route::get('/roles/editar/{rol}', [RolController::class, 'edit'])
+        ->name('admin.editrol');
 
-            Route::post('/roles/crear/store', 'store')
-                ->name('admin.storedrol');
+    Route::post('/roles/editar/{rol}', [RolController::class, 'update'])
+        ->name('admin.updaterol');
 
-            Route::get('/roles/editar/{rol}', 'edit')
-                ->name('admin.editrol');
+    Route::get('/permisos', function () {
+        return redirect()->route('admin.indexrol');
+    })->name('admin.indexpermiso');
 
-            Route::post('/roles/editar/{rol}', 'update')
-                ->name('admin.updaterol');
-
-            Route::delete('/roles/eliminar/{rol}', 'destroy')
-                ->name('admin.destroyrol');
-        });
-
-    // PERMISOS Y ASIGNACIÓN A ROLES
-    Route::middleware('permiso:gestion_roles')->group(function () {
-        Route::get('/permisos', [PermisoController::class, 'index'])
-            ->name('admin.indexpermiso');
-
-        Route::get('/rol-permisos', [RolPermisosController::class, 'index'])
-            ->name('admin.indexrolpermiso');
-
-        Route::post('/rol-permisos/store', [RolPermisosController::class, 'store'])
-            ->name('admin.storedrolpermiso');
-    });
+    Route::get('/rol-permisos', function () {
+        return redirect()->route('admin.indexrol');
+    })->name('admin.indexrolpermiso');
+});
 
     // PRODUCTOS
     Route::controller(ProductoController::class)
