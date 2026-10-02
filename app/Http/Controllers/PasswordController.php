@@ -122,6 +122,7 @@ event(new PasswordReset($usuario));
         );
 
         if ($estado === Password::PASSWORD_RESET) {
+            $request->session()->forget('login_bloqueo_hasta');
             return redirect()
                 ->route('login')
                 ->with(

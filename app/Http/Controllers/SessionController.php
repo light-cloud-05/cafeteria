@@ -37,7 +37,7 @@ class SessionController extends Controller
 
         $maxIntentos = 3;
         $ventanaIntentos = 15 * 60;
-        $duracionBloqueo = 5 * 60;
+        $duracionBloqueo = 0.5 * 60;
 
         // Durante el bloqueo no comprobamos la contraseña.
         if (RateLimiter::tooManyAttempts($claveBloqueo, 1)) {
@@ -50,6 +50,11 @@ class SessionController extends Controller
                         "Acceso bloqueado temporalmente. Intenta nuevamente en aproximadamente {$minutos} minuto(s), o recupera tu contraseña.",
                 ])
                 ->withInput($request->only('nombreUsuario'));
+
+$request->session()->put(
+    'login_bloqueo_hasta',
+    now()->timestamp + $segundos
+);
         }
 
         $credenciales = [
@@ -66,6 +71,10 @@ class SessionController extends Controller
             if ($intentos >= $maxIntentos) {
                 // Los cinco minutos comienzan en el tercer fallo.
                 RateLimiter::hit($claveBloqueo, $duracionBloqueo);
+                $request->session()->put(
+    'login_bloqueo_hasta',
+    now()->timestamp + RateLimiter::availableIn($claveBloqueo)
+);
 
                 // Al terminar el bloqueo tendrá tres intentos nuevos.
                 RateLimiter::clear($claveIntentos);
@@ -91,6 +100,8 @@ class SessionController extends Controller
         // Inicio de sesión correcto.
         RateLimiter::clear($claveIntentos);
         RateLimiter::clear($claveBloqueo);
+
+        $request->session()->forget('login_bloqueo_hasta');
 
         $request->session()->regenerate();
 

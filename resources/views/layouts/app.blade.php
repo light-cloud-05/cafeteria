@@ -21,6 +21,9 @@
                 >
                     Inicio
                 </a>
+                <a href="{{ route('perfil.contrasena') }}">
+    Cambiar mi contraseña
+</a>
 
                 @if (auth()->user()->tienePermiso('gestion_categorias'))
                     <a

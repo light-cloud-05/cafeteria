@@ -5,6 +5,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\RolController;
 use App\Http\Controllers\PermisoController;
 use App\Http\Controllers\RolPermisosController;
+use App\Http\Controllers\MiContrasenaController;
 use App\Http\Controllers\SessionController;
 use Illuminate\Support\Facades\RateLimiter;
 use App\Http\Controllers\PasswordController;
@@ -250,4 +251,18 @@ Route::middleware('permiso:gestion_roles')->group(function () {
     Route::get('/bitacora', [BitacorasController::class, 'index'])
         ->middleware('permiso:consultar_bitacora')
         ->name('admin.indexbitacora');
+    // Cambio de contraseña de la cuenta que inició sesión.
+Route::middleware('auth')->group(function () {
+    Route::get('/mi-contrasena', [
+        MiContrasenaController::class,
+        'index',
+    ])->name('perfil.contrasena');
+
+    Route::put('/mi-contrasena', [
+        MiContrasenaController::class,
+        'update',
+    ])
+        ->middleware('throttle:5,1')
+        ->name('perfil.contrasena.update');
+});    
 });

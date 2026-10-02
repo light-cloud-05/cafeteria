@@ -38,6 +38,38 @@
                 Ingresa con tu cuenta para acceder al sistema.
             </p>
 
+            @php
+    $segundosBloqueo = max(
+        0,
+        (int) session('login_bloqueo_hasta', 0) - now()->timestamp
+    );
+@endphp
+
+@if ($segundosBloqueo > 0)
+    <div
+        id="aviso-bloqueo"
+        class="aviso error"
+        data-segundos="{{ $segundosBloqueo }}"
+    >
+        <p>
+            Se alcanzó el límite de intentos para la cuenta utilizada.
+        </p>
+
+        <p>
+            Podrás intentarlo nuevamente en
+            <strong id="contador-bloqueo">
+                {{ sprintf(
+                    '%02d:%02d',
+                    intdiv($segundosBloqueo, 60),
+                    $segundosBloqueo % 60
+                ) }}
+            </strong>.
+        </p>
+
+        <p>También puedes recuperar tu contraseña.</p>
+    </div>
+@endif
+
             @if (session('success'))
                 <div class="aviso-exito" role="status">
                     {{ session('success') }}
@@ -118,5 +150,47 @@
             Acceso exclusivo para personal autorizado
         </footer>
     </main>
+    <script>
+    (() => {
+        const aviso = document.getElementById('aviso-bloqueo');
+        const contador = document.getElementById('contador-bloqueo');
+
+        if (!aviso || !contador) {
+            return;
+        }
+
+        const segundosIniciales = Number(aviso.dataset.segundos);
+        const fin = Date.now() + segundosIniciales * 1000;
+
+        let intervalo;
+
+        function actualizarContador() {
+            const restantes = Math.max(
+                0,
+                Math.ceil((fin - Date.now()) / 1000)
+            );
+
+            const minutos = String(
+                Math.floor(restantes / 60)
+            ).padStart(2, '0');
+
+            const segundos = String(
+                restantes % 60
+            ).padStart(2, '0');
+
+            contador.textContent = `${minutos}:${segundos}`;
+
+            if (restantes === 0) {
+                clearInterval(intervalo);
+
+                aviso.textContent =
+                    'El tiempo de espera terminó. Puedes intentar iniciar sesión nuevamente.';
+            }
+        }
+
+        intervalo = setInterval(actualizarContador, 1000);
+        actualizarContador();
+    })();
+</script>
 </body>
 </html>
