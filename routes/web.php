@@ -6,6 +6,7 @@ use App\Http\Controllers\RolController;
 use App\Http\Controllers\PermisoController;
 use App\Http\Controllers\RolPermisosController;
 use App\Http\Controllers\SessionController;
+use Illuminate\Support\Facades\RateLimiter;
 use App\Http\Controllers\PasswordController;
 use App\Http\Controllers\ProductoController;
 use App\Http\Controllers\CategoriaController;
@@ -28,9 +29,8 @@ Route::middleware('guest')->group(function () {
     Route::get('/login', [SessionController::class, 'index'])
         ->name('login');
 
-    Route::post('/login', [SessionController::class, 'store'])
-        ->middleware('throttle:5,1')
-        ->name('login.store');
+Route::post('/login', [SessionController::class, 'store'])
+    ->name('login.store');
     Route::get('/recuperar-contrasena', [PasswordController::class, 'index'])
     ->name('password.request');
 

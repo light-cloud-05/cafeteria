@@ -7,6 +7,7 @@ use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 
 class PasswordController extends Controller
@@ -102,11 +103,21 @@ class PasswordController extends Controller
                     ]);
                 }
 
-                $usuario->forceFill([
-                    'password' => Hash::make($password),
-                ])->save();
+$usuario->forceFill([
+    'password' => Hash::make($password),
+])->save();
 
-                event(new PasswordReset($usuario));
+// Desbloquear solo después de validar el enlace
+// y guardar correctamente la nueva contraseña.
+$identificador = hash(
+    'sha256',
+    mb_strtolower(trim($usuario->nombreUsuario))
+);
+
+RateLimiter::clear('login:intentos:' . $identificador);
+RateLimiter::clear('login:bloqueo:' . $identificador);
+
+event(new PasswordReset($usuario));
             }
         );
 
