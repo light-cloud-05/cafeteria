@@ -24,6 +24,11 @@
                 <a href="{{ route('perfil.contrasena') }}">
     Cambiar mi contraseña
 </a>
+@if (auth()->user()->tienePermiso('consultar_bitacora'))
+    <a href="{{ route('admin.indexbitacora') }}">
+        Bitácora
+    </a>
+@endif
 
                 @if (auth()->user()->tienePermiso('gestion_categorias'))
                     <a

@@ -20,4 +20,13 @@ class Bitacora extends Model
         'fechaHora',
         'idUsuario',
     ];
+
+    protected $casts = [
+        'fechaHora' => 'datetime',
+    ];
+
+    public function usuario()
+    {
+        return $this->belongsTo(User::class, 'idUsuario');
+    }
 }
