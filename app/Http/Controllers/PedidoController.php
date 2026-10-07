@@ -1,73 +1,84 @@
 <?php
-
 namespace App\Http\Controllers;
-
-use App\Models\Pedido;
+use App\Models\{Pedido,Producto,Promocion};
+use App\Services\PedidoService;
 use Illuminate\Http\Request;
-
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 class PedidoController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        // Listar todos los pedidos incluyendo las relaciones con usuario y detalles
-        $pedidos = Pedido::with(['usuario', 'detalles'])->get();
-        return response()->json($pedidos);
+        $datos=$request->validate(['fecha'=>'nullable|date_format:Y-m-d','estado'=>'nullable|in:Registrado,Pagado,Completado,Cancelado']);
+        $pedidos=Pedido::with('usuario')->when($request->filled('fecha'),fn($q)=>$q->enFecha('fechaHora',$datos['fecha']))
+            ->when($request->filled('estado'),fn($q)=>$q->where('estado',$datos['estado']))->latest('fechaHora')->paginate(25)->withQueryString();
+        return view('pedidos.index',compact('pedidos'));
     }
-
-    public function store(Request $request)
+    private function formulario(Pedido $pedido)
     {
-        // Validar los datos de entrada para registrar un nuevo pedido
-        $request->validate([
-            'fecha_hora' => 'required|date',
-            'total' => 'required|numeric|min:0',
-            'estado' => 'required|string',
-            'usuario_id' => 'required|exists:usuarios,id', // Asegúrate de que apunte a tu tabla de usuarios
-        ]);
-
-        $pedido = Pedido::create($request->all());
-
-        return response()->json([
-            'message' => 'Pedido registrado con éxito',
-            'data' => $pedido
-        ], 201);
+        $productos=Producto::with(['categoria','stock'])->orderBy('nombre')->get();
+        $promociones=Promocion::with('producto')->orderBy('nombre')->get();
+        $desdeCaja = request()->routeIs('admin.venta.pedido.*');
+        return view('pedidos.form',compact('pedido','productos','promociones','desdeCaja'));
     }
-
-    public function show($id)
+    public function create() { return $this->formulario(new Pedido()); }
+    private function validar(Request $request): array
     {
-        // Mostrar un pedido específico por su ID con sus relaciones
-        $pedido = Pedido::with(['usuario', 'detalles'])->findOrFail($id);
-        return response()->json($pedido);
+        return $request->validate(['detalles'=>'required|array|min:1|max:100',
+            'detalles.*.producto_id'=>'required|integer|distinct|exists:productos,id',
+            'detalles.*.cantidad'=>'required|integer|min:1|max:10000',
+            'detalles.*.opcion'=>'nullable|string|max:255','promocion_id'=>'nullable|integer|exists:promociones,id']);
     }
-
-    public function update(Request $request, $id)
+    public function store(Request $request, PedidoService $servicio)
     {
-        // Buscar el pedido existente o lanzar error 404
-        $pedido = Pedido::findOrFail($id);
-
-        // Validar los campos de manera opcional (sometimes) para actualizaciones parciales o totales
-        $request->validate([
-            'fecha_hora' => 'sometimes|required|date',
-            'total' => 'sometimes|required|numeric|min:0',
-            'estado' => 'sometimes|required|string',
-            'usuario_id' => 'sometimes|required|exists:usuarios,id',
-        ]);
-
-        $pedido->update($request->all());
-
-        return response()->json([
-            'message' => 'Pedido actualizado con éxito',
-            'data' => $pedido
-        ]);
+        $datos=$this->validar($request);
+        $pedido=DB::transaction(function() use($datos,$request,$servicio) {
+            $calculo=$servicio->calcular($datos);$detalles=$calculo['detalles'];unset($calculo['detalles']);
+            $pedido=Pedido::create($calculo+['fechaHora'=>now(),'estado'=>'Registrado','usuario_id'=>$request->user()->id]);
+            $pedido->detalles()->createMany($detalles);return $pedido;
+        });
+        return redirect()->route('admin.pedido.ver',$pedido)->with('success','Pedido registrado correctamente.')->with('borrador_guardado','pedido-'.auth()->id());
     }
-
-    public function destroy($id)
+    private function editable(Pedido $pedido): void
     {
-        // Eliminar o cancelar el pedido del sistema
-        $pedido = Pedido::findOrFail($id);
-        $pedido->delete();
-
-        return response()->json([
-            'message' => 'Pedido eliminado con éxito'
-        ]);
+        if($pedido->estado !== 'Registrado' || $pedido->venta()->exists()) throw ValidationException::withMessages(['pedido'=>'Solo se puede modificar o cancelar un pedido registrado y sin cobrar.']);
+    }
+    public function edit(int $id)
+    {
+        $pedido=Pedido::with('detalles')->findOrFail($id);$this->editable($pedido);return $this->formulario($pedido);
+    }
+    public function update(Request $request,int $id,PedidoService $servicio)
+    {
+        $datos=$this->validar($request);
+        DB::transaction(function() use($id,$datos,$servicio) {
+            $pedido=Pedido::lockForUpdate()->findOrFail($id);$this->editable($pedido);
+            $calculo=$servicio->calcular($datos);$detalles=$calculo['detalles'];unset($calculo['detalles']);
+            $pedido->update($calculo);$pedido->detalles()->delete();$pedido->detalles()->createMany($detalles);
+        });
+        $desdeCaja = $request->routeIs('admin.venta.pedido.*');
+        return redirect()->route($desdeCaja ? 'admin.venta.crear' : 'admin.pedido.ver',$id)
+            ->with('success',$desdeCaja ? 'Pedido corregido. Confirma el nuevo total con el cliente antes de cobrar.' : 'Pedido actualizado.')
+            ->with('borrador_guardado','pedido-'.auth()->id().'-editar-'.$id);
+    }
+    public function cancelar(int $id)
+    {
+        DB::transaction(function() use($id) { $pedido=Pedido::lockForUpdate()->findOrFail($id);$this->editable($pedido);$pedido->update(['estado'=>'Cancelado']); });
+        return redirect()->route('admin.pedido.ver',$id)->with('success','Pedido cancelado.');
+    }
+    public function estado(Request $request,int $id)
+    {
+        $datos=$request->validate(['estado'=>'required|in:Completado']);
+        DB::transaction(function() use($id,$datos) {
+            $pedido=Pedido::lockForUpdate()->findOrFail($id);
+            if($pedido->estado !== 'Pagado' || !$pedido->venta()->exists()) throw ValidationException::withMessages(['estado'=>'Solo un pedido pagado puede completarse. El estado Pagado se asigna al registrar el cobro.']);
+            $pedido->update($datos);
+        });
+        return redirect()->route('admin.pedido.ver',$id)->with('success','Pedido completado.');
+    }
+    public function show(int $id)
+    {
+        abort_unless(collect(['registrar_pedidos','modificar_pedidos','cambiar_estado_pedidos','consultar_historial_pedidos','cobrar_ventas'])->contains(fn($p)=>auth()->user()->tienePermiso($p)),403);
+        $pedido=Pedido::with(['usuario','detalles.producto','venta','promocion'])->findOrFail($id);
+        return view('pedidos.show',compact('pedido'));
     }
 }

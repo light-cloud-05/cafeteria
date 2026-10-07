@@ -89,13 +89,14 @@ class ProveedorController extends Controller
                 'max:255',
                 $nombreUnico,
             ],
-            'telefono' => ['nullable', 'string', 'max:30'],
+            'telefono' => ['nullable', 'string', 'max:30', 'regex:/^\+?[0-9 ()-]{6,30}$/'],
             'estado' => ['required', 'boolean'],
         ], [
             'nombre.required' => 'Escribe el nombre del proveedor.',
             'nombre.unique' => 'Ya existe un proveedor con ese nombre.',
             'nombre.max' => 'El nombre admite hasta 255 caracteres.',
             'telefono.max' => 'El teléfono admite hasta 30 caracteres.',
+            'telefono.regex' => 'Ingresa un teléfono válido con números, espacios, paréntesis o guiones.',
             'estado.required' => 'Selecciona el estado.',
             'estado.boolean' => 'El estado seleccionado no es válido.',
         ]);

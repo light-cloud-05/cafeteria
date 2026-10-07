@@ -11,6 +11,8 @@ class DetallePedido extends Model
 
     protected $table = 'detalle_pedidos';
 
+    public function producto() { return $this->belongsTo(Producto::class); }
+
     protected $fillable = [
         'precioUnitario',
         'cantidad',

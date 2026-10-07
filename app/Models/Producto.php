@@ -26,6 +26,17 @@ class Producto extends Model
         'disponible' => 'boolean',
     ];
 
+    public function stock()
+    {
+        return $this->hasOne(Stock::class);
+    }
+
+    public function vendible(): bool
+    {
+        return $this->disponible && $this->categoria?->estado
+            && $this->stock && $this->stock->stock_actual > $this->stock->stock_minimo;
+    }
+
     public function categoria(): BelongsTo
     {
         return $this->belongsTo(Categoria::class, 'categoria_id');

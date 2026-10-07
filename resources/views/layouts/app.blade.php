@@ -70,6 +70,18 @@
                         Proveedores
                      </a>
                  @endif
+                @foreach (['consultar_stock'=>['admin.indexstock','Stock actual'], 'consultar_stock_minimo'=>['admin.stock.minimos','Stock mínimo'], 'ver_agotados'=>['admin.stock.agotados','Avisos de agotados'], 'buscar_productos'=>['admin.catalogo','Buscar producto'], 'registrar_entradas'=>['admin.movimiento.crear.entrada','Registrar entrada'], 'registrar_salidas'=>['admin.movimiento.crear.salida','Registrar salida'], 'registrar_ajustes'=>['admin.movimiento.crear.ajuste','Registrar ajuste'], 'registrar_pedidos'=>['admin.pedido.crear','Nuevo pedido'], 'ver_reportes'=>['admin.indexmovimiento','Movimientos']] as $permiso => [$ruta,$texto])
+                    @if(auth()->user()->tienePermiso($permiso))<a href="{{ route($ruta) }}">{{ $texto }}</a>@endif
+                @endforeach
+                @if(auth()->user()->tienePermiso('consultar_historial_pedidos'))<a href="{{ route('admin.indexpedido') }}">Historial de pedidos</a>@endif
+                @if(auth()->user()->tienePermiso('cobrar_ventas'))<a href="{{ route('admin.indexventa') }}">Ventas y cobros</a>@endif
+                @if(auth()->user()->tienePermiso('ver_reportes'))
+                    <a href="{{ route('admin.reportes.diarias') }}">Ventas diarias</a>
+                    <a href="{{ route('admin.reportes.pagos') }}">Reporte por método de pago</a>
+                    <a href="{{ route('admin.reportes.inventario') }}">Reporte de inventario</a>
+                @endif
+                @if(auth()->user()->tienePermiso('gestion_promociones'))<a href="{{ route('admin.indexpromocion') }}">Promociones</a>@endif
+                @if(!auth()->user()->tienePermiso('gestion_promociones') && (auth()->user()->tienePermiso('registrar_pedidos') || auth()->user()->tienePermiso('modificar_pedidos') || auth()->user()->tienePermiso('cobrar_ventas')))<a href="{{ route('admin.promociones.consultar') }}">Consultar promociones</a>@endif
             </nav>
         </aside>
 
@@ -91,6 +103,10 @@
             </header>
 
             <main class="contenido">
+                @if(auth()->user()->tienePermiso('ver_agotados'))
+                    @php($agotados = \App\Models\Stock::whereColumn('stock_actual','<=','stock_minimo')->count())
+                    @if($agotados > 0)<div class="aviso error" role="alert">{{ $agotados }} producto(s) requieren reposición. <a href="{{ route('admin.stock.agotados') }}">Consultar avisos</a></div>@endif
+                @endif
                 @if (session('success'))
                     <div class="aviso exito" role="status">
                         {{ session('success') }}
@@ -107,5 +123,6 @@
             </main>
         </div>
     </div>
+    <script src="{{ asset('js-borradores.js') }}" defer></script>
 </body>
 </html>

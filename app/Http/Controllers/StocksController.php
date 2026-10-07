@@ -1,73 +1,39 @@
 <?php
-
 namespace App\Http\Controllers;
-
-use App\Models\Stock; // Asegúrate de que el modelo se llame Stock (o Stocks según tu archivo)
+use App\Models\{Producto, Categoria, Stock};
 use Illuminate\Http\Request;
-
 class StocksController extends Controller
 {
-    public function index()
+    public function minimo(Request $request, int $id)
     {
-        // Listar todos los registros de stock incluyendo la relación con el producto
-        $stocks = Stock::with('producto')->get();
-        return response()->json($stocks);
+        $datos = $request->validate(['stock_minimo'=>'required|numeric|min:0|max:99999999.99|decimal:0,2']);
+        \Illuminate\Support\Facades\DB::transaction(function() use($id,$datos) {
+            $producto = Producto::lockForUpdate()->findOrFail($id);
+            $servicio = app(\App\Services\InventarioService::class);
+            $stock = $servicio->stock($producto);
+            $antes = $stock->stock_actual <= $stock->stock_minimo;
+            $stock->update($datos);
+            $despues = $stock->stock_actual <= $stock->stock_minimo;
+            if ($antes !== $despues) \App\Models\Bitacora::create([
+                'tablaAfectada'=>'stocks','idRegistroAfectado'=>$stock->id,
+                'accion'=>$despues ? 'PRODUCTO_AGOTADO' : 'PRODUCTO_REPUESTO',
+                'valoresAnteriores'=>null,'valoresNuevos'=>json_encode($datos),
+                'fechaHora'=>now(),'idUsuario'=>auth()->id(),
+            ]);
+        });
+        return back()->with('success','Stock mínimo actualizado.');
     }
-
-    public function store(Request $request)
+    public function index(Request $request) { return $this->listado($request,'actual'); }
+    public function minimos(Request $request) { return $this->listado($request,'minimos'); }
+    public function agotados(Request $request) { return $this->listado($request,'agotados'); }
+    private function listado(Request $request, string $modo)
     {
-        // Validar los datos de entrada para registrar el stock de un producto
-        $request->validate([
-            'producto_id' => 'required|exists:productos,id|unique:stocks,producto_id',
-            'stock_actual' => 'required|numeric|min:0',
-            'stock_minimo' => 'required|numeric|min:0',
-            'fecha_actualizacion' => 'required|date',
-        ]);
-
-        $stock = Stock::create($request->all());
-
-        return response()->json([
-            'message' => 'Stock registrado con éxito',
-            'data' => $stock
-        ], 201);
-    }
-
-    public function show($id)
-    {
-        // Mostrar un registro de stock específico con su producto relacionado
-        $stock = Stock::with('producto')->findOrFail($id);
-        return response()->json($stock);
-    }
-
-    public function update(Request $request, $id)
-    {
-        // Buscar el stock existente o lanzar error 404
-        $stock = Stock::findOrFail($id);
-
-        // Validar los campos de manera opcional (sometimes) para actualizaciones
-        $request->validate([
-            'producto_id' => 'sometimes|required|exists:productos,id|unique:stocks,producto_id,' . $id,
-            'stock_actual' => 'sometimes|required|numeric|min:0',
-            'stock_minimo' => 'sometimes|required|numeric|min:0',
-            'fecha_actualizacion' => 'sometimes|required|date',
-        ]);
-
-        $stock->update($request->all());
-
-        return response()->json([
-            'message' => 'Stock actualizado con éxito',
-            'data' => $stock
-        ]);
-    }
-
-    public function destroy($id)
-    {
-        // Eliminar el registro de stock del sistema
-        $stock = Stock::findOrFail($id);
-        $stock->delete();
-
-        return response()->json([
-            'message' => 'Stock eliminado con éxito'
-        ]);
+        $request->validate(['categoria_id'=>'nullable|integer|exists:categorias,id']);
+        $consulta = Producto::with(['categoria','stock'])->orderBy('nombre');
+        if ($request->filled('categoria_id')) $consulta->where('categoria_id',$request->categoria_id);
+        if ($modo !== 'actual') $consulta->whereHas('stock',fn($q)=>$q->whereColumn('stock_actual','<=','stock_minimo'));
+        $productos = $consulta->get();
+        $categorias = Categoria::orderBy('nombre')->get();
+        return view('inventario.stock',compact('productos','categorias','modo'));
     }
 }

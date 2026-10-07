@@ -21,6 +21,14 @@
             action="{{ route('admin.indexbitacora') }}"
         >
             <div class="campo">
+                <label for="desde">Desde</label>
+                <input id="desde" name="desde" type="date" value="{{ request('desde') }}">
+            </div>
+            <div class="campo">
+                <label for="hasta">Hasta</label>
+                <input id="hasta" name="hasta" type="date" value="{{ request('hasta') }}">
+            </div>
+            <div class="campo">
                 <label for="usuario">
                     Nombre de usuario exacto
                 </label>
@@ -73,11 +81,13 @@
                 <thead>
                     <tr>
                         <th>ID</th>
-                        <th>Fecha y hora del servidor</th>
+                        <th>Fecha y hora de Bolivia</th>
                         <th>Usuario</th>
                         <th>Acción</th>
                         <th>Tabla</th>
                         <th>Registro afectado</th>
+                        <th>IP</th>
+                        <th>Detalle</th>
                     </tr>
                 </thead>
 
@@ -101,11 +111,13 @@
                             <td>{{ $bitacora->tablaAfectada }}</td>
 
                             <td>{{ $bitacora->idRegistroAfectado }}</td>
+                            <td>{{ $bitacora->ip ?? 'No registrada' }}</td>
+                            <td><a href="{{ route('admin.bitacora.ver',$bitacora->id) }}">Ver detalle</a></td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6">
-                                No hay registros para mostrar.
+                            <td colspan="8">
+                                {{ $hayFiltros ? 'Sin coincidencias.' : 'No hay eventos registrados.' }}
                             </td>
                         </tr>
                     @endforelse

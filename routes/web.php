@@ -191,7 +191,7 @@ Route::middleware('permiso:gestion_roles')->group(function () {
         ->middleware('permiso:consultar_stock')
         ->name('admin.indexstock');
 
-    // La edición de stock se implementará mediante movimientos
+    // La edición de stock se registra mediante movimientos
     // de ajuste, para conservar el historial.
 
     // HISTORIAL DE MOVIMIENTOS
@@ -199,25 +199,25 @@ Route::middleware('permiso:gestion_roles')->group(function () {
         ->middleware('permiso:ver_reportes')
         ->name('admin.indexmovimiento');
 
-    // El registro de entradas, salidas y ajustes se conectará
-    // al implementar la comprobación del permiso según el tipo.
+    // El registro de entradas, salidas y ajustes está conectado más abajo.
+    // El controlador comprueba el permiso según el tipo.
 
     // HISTORIAL DE PEDIDOS
     Route::get('/pedidos', [PedidoController::class, 'index'])
         ->middleware('permiso:consultar_historial_pedidos')
         ->name('admin.indexpedido');
 
-    // Registrar, modificar, cancelar y cambiar estados de pedidos
-    // se conectará al adaptar sus reglas de negocio.
-    // No usamos destroy(): actualmente borra el pedido.
+    // Registro, modificación, cancelación y cambios de estado conectados más abajo.
+    // Cada operación comprueba su permiso correspondiente.
+    // La cancelación conserva el historial del pedido.
 
     // CONSULTA DE VENTAS PARA EL CAJERO
     Route::get('/ventas', [VentaController::class, 'index'])
         ->middleware('permiso:cobrar_ventas')
         ->name('admin.indexventa');
 
-    // El registro del cobro se conectará después de calcular
-    // el total en el servidor y evitar cobros duplicados.
+    // El cobro está conectado más abajo; calcula
+    // el total en el servidor y evita cobros duplicados.
 
     // MÉTODOS DE PAGO
     Route::get('/metodos-pago', [MetodoPagosController::class, 'index'])
@@ -265,4 +265,36 @@ Route::middleware('auth')->group(function () {
         ->middleware('throttle:5,1')
         ->name('perfil.contrasena.update');
 });    
+});Route::middleware('auth')->prefix('admin')->group(function () {
+    foreach (['entrada','salida','ajuste'] as $tipo) {
+        Route::get('/inventario/'.$tipo, [MovimientoInventarioController::class,'create'])->defaults('tipo',$tipo)->name('admin.movimiento.crear.'.$tipo);
+        Route::post('/inventario/'.$tipo, [MovimientoInventarioController::class,'store'])->defaults('tipo',$tipo)->name('admin.movimiento.store.'.$tipo);
+    }
+    Route::get('/stock-minimo',[StocksController::class,'minimos'])->middleware('permiso:consultar_stock_minimo')->name('admin.stock.minimos');
+    Route::get('/agotados',[StocksController::class,'agotados'])->middleware('permiso:ver_agotados')->name('admin.stock.agotados');
+    Route::get('/catalogo',[\App\Http\Controllers\CatalogoController::class,'index'])->middleware('permiso:buscar_productos')->name('admin.catalogo');
+    Route::get('/pedidos/nuevo',[PedidoController::class,'create'])->middleware('permiso:registrar_pedidos')->name('admin.pedido.crear');
+    Route::post('/pedidos/nuevo',[PedidoController::class,'store'])->middleware('permiso:registrar_pedidos')->name('admin.pedido.store');
+    Route::get('/pedidos/ver/{id}',[PedidoController::class,'show'])->name('admin.pedido.ver');
 });
+Route::put('/admin/stocks/{id}/minimo',[StocksController::class,'minimo'])->middleware(['auth','permiso:registrar_ajustes'])->name('admin.stock.minimo');
+
+Route::middleware('auth')->prefix('admin')->group(function () {
+    Route::get('/pedidos/editar/{id}',[PedidoController::class,'edit'])->middleware('permiso:modificar_pedidos')->name('admin.pedido.editar');
+    Route::put('/pedidos/editar/{id}',[PedidoController::class,'update'])->middleware('permiso:modificar_pedidos')->name('admin.pedido.update');
+    Route::post('/pedidos/cancelar/{id}',[PedidoController::class,'cancelar'])->middleware('permiso:modificar_pedidos')->name('admin.pedido.cancelar');
+    Route::put('/pedidos/estado/{id}',[PedidoController::class,'estado'])->middleware('permiso:cambiar_estado_pedidos')->name('admin.pedido.estado');
+    Route::get('/ventas/cobrar/{id}',[VentaController::class,'create'])->middleware('permiso:cobrar_ventas')->name('admin.venta.crear');
+    Route::post('/ventas/cobrar/{id}',[VentaController::class,'store'])->middleware('permiso:cobrar_ventas')->name('admin.venta.store');
+    Route::post('/promociones/activar/{id}',[PromocionesController::class,'activar'])->middleware('permiso:gestion_promociones')->name('admin.promocion.activar');
+    Route::get('/reportes/ventas-diarias',[\App\Http\Controllers\ReportesController::class,'diarias'])->middleware('permiso:ver_reportes')->name('admin.reportes.diarias');
+    Route::get('/reportes/metodos-pago',[\App\Http\Controllers\ReportesController::class,'pagos'])->middleware('permiso:ver_reportes')->name('admin.reportes.pagos');
+    Route::get('/reportes/inventario',[\App\Http\Controllers\ReportesController::class,'inventario'])->middleware('permiso:ver_reportes')->name('admin.reportes.inventario');
+});
+Route::get('/admin/bitacora/{id}',[BitacorasController::class,'show'])->middleware(['auth','permiso:consultar_bitacora'])->whereNumber('id')->name('admin.bitacora.ver');
+Route::middleware(['auth','permiso:cobrar_ventas'])->prefix('admin')->group(function () {
+    Route::get('/ventas/corregir-pedido/{id}',[PedidoController::class,'edit'])->name('admin.venta.pedido.editar');
+    Route::put('/ventas/corregir-pedido/{id}',[PedidoController::class,'update'])->name('admin.venta.pedido.update');
+});
+Route::get('/admin/ventas/siguiente/{id}',[VentaController::class,'siguiente'])->middleware(['auth','permiso:cobrar_ventas'])->whereNumber('id')->name('admin.venta.siguiente');
+Route::get('/admin/promociones/disponibles',[PromocionesController::class,'consultar'])->middleware('auth')->name('admin.promociones.consultar');

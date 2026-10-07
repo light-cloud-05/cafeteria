@@ -1,0 +1,10 @@
+@extends('layouts.app')
+@section('titulo','Reporte de inventario')
+@section('contenido')
+<h1>Reporte de inventario</h1><form method="GET" class="tarjeta formulario"><div class="campo"><label for="modo">Consulta</label><select id="modo" name="modo"><option value="stock" @selected($modo==='stock')>Inventario actual</option><option value="movimientos" @selected($modo==='movimientos')>Movimientos</option></select></div><div class="campo"><label for="producto">Producto</label><select id="producto" name="producto_id"><option value="">Todos</option>@foreach($productos as $p)<option value="{{ $p->id }}" @selected(request('producto_id')==$p->id)>{{ $p->nombre }}</option>@endforeach</select></div><div class="campo"><label for="desde">Desde (movimientos)</label><input id="desde" name="desde" type="date" value="{{ $desde }}"></div><div class="campo"><label for="hasta">Hasta (movimientos)</label><input id="hasta" name="hasta" type="date" value="{{ $hasta }}"></div><button class="boton">Consultar</button></form>
+@if($errors->any())<div class="aviso error">{{ $errors->first() }}</div>@endif
+<div class="tarjeta tabla-contenedor"><table>
+@if($modo==='stock')<thead><tr><th>Producto</th><th>Stock actual</th><th>Mínimo</th><th>Actualización</th></tr></thead><tbody>@forelse($stocks as $p)<tr><td>{{ $p->nombre }}</td><td>{{ $p->stock?->stock_actual ?? 'Sin registro' }}</td><td>{{ $p->stock?->stock_minimo ?? 'Sin definir' }}</td><td>{{ $p->stock?->fecha_actualizacion }}</td></tr>@empty<tr><td colspan="4">No hay productos en el inventario.</td></tr>@endforelse</tbody>
+@else<thead><tr><th>Fecha</th><th>Producto</th><th>Tipo</th><th>Cantidad / diferencia</th><th>Motivo</th><th>Usuario</th></tr></thead><tbody>@forelse($movimientos as $m)<tr><td>{{ $m->fecha_hora }}</td><td>{{ $m->producto?->nombre }}</td><td>{{ $m->tipo }}</td><td>{{ $m->cantidad }}</td><td>{{ $m->motivo }}</td><td>{{ $m->usuario?->nombreCompleto }}</td></tr>@empty<tr><td colspan="6">Sin movimientos.</td></tr>@endforelse</tbody>@endif</table></div>
+@if($modo==='movimientos'){{ $movimientos->links() }}@endif
+@endsection

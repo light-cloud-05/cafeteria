@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class Bitacora extends Model
 {
     use HasFactory;
+    use \App\Models\Concerns\FiltraFechaLocal;
 
     protected $table = 'bitacoras';
 
@@ -19,11 +20,21 @@ class Bitacora extends Model
         'valoresNuevos',
         'fechaHora',
         'idUsuario',
+        'ip',
     ];
 
     protected $casts = [
-        'fechaHora' => 'datetime',
+        'fechaHora' => \App\Casts\FechaLocal::class,
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (Bitacora $registro) {
+            if ($registro->ip === null && (!app()->runningInConsole() || app()->runningUnitTests())) {
+                $registro->ip = request()->ip();
+            }
+        });
+    }
 
     public function usuario()
     {
