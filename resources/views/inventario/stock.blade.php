@@ -22,7 +22,7 @@
             <h3>{{ $producto->nombre }}</h3>
             <div class="campo">
                 <label for="stock-{{ $producto->id }}">Stock actual</label>
-                <input id="stock-{{ $producto->id }}" name="cantidad" type="number" min="0" step="0.01" max="99999999.99" value="{{ (string) old('producto_id') === (string) $producto->id ? old('cantidad', $producto->stock?->stock_actual ?? 0) : ($producto->stock?->stock_actual ?? 0) }}" required>
+                <input id="stock-{{ $producto->id }}" name="cantidad" type="number" min="0" step="1" max="99999999" value="{{ (string) old('producto_id') === (string) $producto->id ? old('cantidad', $producto->stock?->stock_actual ?? 0) : ($producto->stock?->stock_actual ?? 0) }}" required>
             </div>
             <div class="campo">
                 <label for="motivo-{{ $producto->id }}">Motivo del ajuste</label>
@@ -33,7 +33,7 @@
     @endforeach
 </div>
 @endif
-<div class="tarjeta"><h2>Definir stock mínimo</h2>@foreach($productos as $producto)<form method="POST" action="{{ route('admin.stock.minimo',$producto->id) }}">@csrf @method('PUT')<label>{{ $producto->nombre }} <input name="stock_minimo" type="number" min="0" step="0.01" max="99999999.99" value="{{ $producto->stock?->stock_minimo ?? 0 }}" required></label><button class="boton secundario">Guardar mínimo</button></form>@endforeach</div>
+<div class="tarjeta"><h2>Definir stock mínimo</h2>@foreach($productos as $producto)<form method="POST" action="{{ route('admin.stock.minimo',$producto->id) }}">@csrf @method('PUT')<label>{{ $producto->nombre }} <input name="stock_minimo" type="number" min="0" step="1" max="99999999" value="{{ $producto->stock?->stock_minimo ?? 0 }}" required></label><button class="boton secundario">Guardar mínimo</button></form>@endforeach</div>
 @endif
 @if($errors->any())<div class="aviso error">{{ $errors->first() }}</div>@endif
 @endsection

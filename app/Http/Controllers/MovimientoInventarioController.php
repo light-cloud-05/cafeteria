@@ -31,7 +31,7 @@ class MovimientoInventarioController extends Controller
         $this->autorizar($tipo);
         $datos = $request->validate([
             'producto_id'=>'required|integer|exists:productos,id',
-            'cantidad'=>['required','numeric',$tipo === 'ajuste' ? 'min:0' : 'gt:0','max:99999999.99','decimal:0,2'],
+            'cantidad'=>['required','integer',$tipo === 'ajuste' ? 'min:0' : 'gt:0','max:99999999'],
             'motivo'=>'required|string|max:255', 'fecha_hora'=>'required|date|before_or_equal:now',
             'proveedor_id'=>'nullable|integer|exists:proveedores,id',
             'volver_stock'=>'sometimes|boolean',

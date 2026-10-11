@@ -46,7 +46,7 @@ class PasswordController extends Controller
         // Mismo mensaje para no revelar qué cuentas existen.
         return back()->with(
             'success',
-            'Si el correo corresponde a una cuenta activa, se tramitará la recuperación. Si ya la solicitaste, espera un minuto antes de repetirla.'
+            'Si el correo corresponde a una cuenta activa, se enviará la recuperación al administrador para autorizarla. Si ya la solicitaste, espera un minuto antes de repetirla.'
         );
     }
 
@@ -104,7 +104,7 @@ class PasswordController extends Controller
                 }
 
 $usuario->forceFill([
-    'password' => Hash::make($password),
+    'password' => Hash::make($password), 'session_token'=>null,
 ])->save();
 
 // Desbloquear solo después de validar el enlace

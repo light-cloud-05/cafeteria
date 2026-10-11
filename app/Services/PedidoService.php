@@ -16,14 +16,14 @@ class PedidoService
             }
             $precio = (int)round((float)$producto->precio*100);
             $importe = $precio*$linea['cantidad']; $subtotal += $importe;
-            $aplica = $promocion && $promocion->aplicaSobre === 'Producto' && (int)$promocion->producto_id === $producto->id;
+            $aplica = $promocion && $promocion->aplicaSobre === 'Producto' && $promocion->aplicaProducto($producto->id);
             if ($aplica) $baseDescuento += $importe;
             $detalles[]=['producto_id'=>$producto->id,'cantidad'=>$linea['cantidad'],'opcion'=>$linea['opcion'] ?? '',
                 'precioUnitario'=>$precio/100,'subtotal'=>$importe/100,'promocion_id'=>$aplica ? $promocion->id : null];
         }
         if ($subtotal > 99999999) throw ValidationException::withMessages(['detalles'=>'El importe excede el límite permitido.']);
         if ($promocion && $promocion->aplicaSobre === 'Pedido') $baseDescuento = $subtotal;
-        if ($promocion && $promocion->aplicaSobre === 'Producto' && !collect($detalles)->contains('producto_id',(int)$promocion->producto_id)) {
+        if ($promocion && $promocion->aplicaSobre === 'Producto' && $baseDescuento === 0) {
             throw ValidationException::withMessages(['promocion_id'=>'Agrega el producto al que corresponde la promoción.']);
         }
         $descuento = $promocion ? $promocion->descuentoCentavos($baseDescuento) : 0;

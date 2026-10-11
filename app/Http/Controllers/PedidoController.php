@@ -18,6 +18,7 @@ class PedidoController extends Controller
     {
         $productos=Producto::with(['categoria','stock'])->orderBy('nombre')->get();
         $promociones=Promocion::with('producto')->orderBy('nombre')->get();
+        if($pedido->stock_reservado) foreach($productos as $p) { if($p->stock) $p->stock->stock_actual += $pedido->detalles->where('producto_id',$p->id)->sum('cantidad'); }
         $desdeCaja = request()->routeIs('admin.venta.pedido.*');
         return view('pedidos.form',compact('pedido','productos','promociones','desdeCaja'));
     }
@@ -34,9 +35,13 @@ class PedidoController extends Controller
         $datos=$this->validar($request);
         $pedido=DB::transaction(function() use($datos,$request,$servicio) {
             $calculo=$servicio->calcular($datos);$detalles=$calculo['detalles'];unset($calculo['detalles']);
-            $pedido=Pedido::create($calculo+['fechaHora'=>now(),'estado'=>'Registrado','usuario_id'=>$request->user()->id]);
-            $pedido->detalles()->createMany($detalles);return $pedido;
-        });
+            $fecha=now()->toDateString();
+            DB::table('numeradores_pedidos')->insertOrIgnore(['fecha'=>$fecha,'ultimo'=>0]);
+            $contador=DB::table('numeradores_pedidos')->where('fecha',$fecha)->lockForUpdate()->first();
+            $numero=$contador->ultimo+1;DB::table('numeradores_pedidos')->where('fecha',$fecha)->update(['ultimo'=>$numero]);
+            $pedido=Pedido::create($calculo+['fecha_numero'=>$fecha,'numero_diario'=>$numero]+['fechaHora'=>now(),'estado'=>'Registrado','usuario_id'=>$request->user()->id]);
+            $pedido->detalles()->createMany($detalles);app(\App\Services\ReservaPedidoService::class)->mover($pedido);return $pedido;
+        },3);
         return redirect()->route('admin.pedido.ver',$pedido)->with('success','Pedido registrado correctamente.')->with('borrador_guardado','pedido-'.auth()->id());
     }
     private function editable(Pedido $pedido): void
@@ -52,9 +57,10 @@ class PedidoController extends Controller
         $datos=$this->validar($request);
         DB::transaction(function() use($id,$datos,$servicio) {
             $pedido=Pedido::lockForUpdate()->findOrFail($id);$this->editable($pedido);
+            app(\App\Services\ReservaPedidoService::class)->mover($pedido,true);
             $calculo=$servicio->calcular($datos);$detalles=$calculo['detalles'];unset($calculo['detalles']);
-            $pedido->update($calculo);$pedido->detalles()->delete();$pedido->detalles()->createMany($detalles);
-        });
+            $pedido->update($calculo);$pedido->detalles()->delete();$pedido->detalles()->createMany($detalles);app(\App\Services\ReservaPedidoService::class)->mover($pedido);
+        },3);
         $desdeCaja = $request->routeIs('admin.venta.pedido.*');
         return redirect()->route($desdeCaja ? 'admin.venta.crear' : 'admin.pedido.ver',$id)
             ->with('success',$desdeCaja ? 'Pedido corregido. Confirma el nuevo total con el cliente antes de cobrar.' : 'Pedido actualizado.')
@@ -62,7 +68,7 @@ class PedidoController extends Controller
     }
     public function cancelar(int $id)
     {
-        DB::transaction(function() use($id) { $pedido=Pedido::lockForUpdate()->findOrFail($id);$this->editable($pedido);$pedido->update(['estado'=>'Cancelado']); });
+        DB::transaction(function() use($id) { $pedido=Pedido::lockForUpdate()->findOrFail($id);$this->editable($pedido);app(\App\Services\ReservaPedidoService::class)->mover($pedido,true);$pedido->update(['estado'=>'Cancelado']); });
         return redirect()->route('admin.pedido.ver',$id)->with('success','Pedido cancelado.');
     }
     public function estado(Request $request,int $id)
@@ -72,7 +78,7 @@ class PedidoController extends Controller
             $pedido=Pedido::lockForUpdate()->findOrFail($id);
             if($pedido->estado !== 'Pagado' || !$pedido->venta()->exists()) throw ValidationException::withMessages(['estado'=>'Solo un pedido pagado puede completarse. El estado Pagado se asigna al registrar el cobro.']);
             $pedido->update($datos);
-        });
+        },3);
         return redirect()->route('admin.pedido.ver',$id)->with('success','Pedido completado.');
     }
     public function show(int $id)

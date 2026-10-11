@@ -13,10 +13,10 @@ class Venta extends Model
 
     protected $table = 'ventas';
     public function pedido() { return $this->belongsTo(Pedido::class); }
-    public function usuario() { return $this->belongsTo(User::class, 'usuario_id'); }
+    public function usuario() { return $this->belongsTo(User::class, 'usuario_id')->withTrashed(); }
     protected $fillable = [
         'fecha_hora',
-        'total',
+        'total', 'monto_qr', 'monto_efectivo',
         'metodo_pago',
         'monto_recibido',
         'cambio',

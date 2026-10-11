@@ -16,17 +16,18 @@ class InventarioPedidosTest extends TestCase
                 $t->id();$t->timestamps();
                 if(in_array($table,['categorias','productos','proveedores','promociones'])) $t->string('nombre');
                 if(in_array($table,['categorias','proveedores','usuarios'])) $t->boolean('estado')->default(true);
-                if($table==='usuarios') {$t->string('nombreCompleto');$t->string('nombreUsuario')->nullable();$t->string('password')->nullable();}
+                if($table==='usuarios') {$t->string('nombreCompleto');$t->string('nombreUsuario')->nullable();$t->string('password')->nullable();$t->softDeletes();$t->string('session_token',64)->nullable();}
                 if($table==='productos') {$t->decimal('precio',8,2);$t->boolean('disponible');$t->integer('categoria_id');$t->integer('proveedor_id')->nullable();}
                 if($table==='stocks') {$t->integer('producto_id')->unique();$t->decimal('stock_actual',10,2);$t->decimal('stock_minimo',10,2);$t->dateTime('fecha_actualizacion')->nullable();}
-                if($table==='pedidos') {$t->integer('usuario_id');$t->dateTime('fechaHora');$t->decimal('total',8,2);$t->decimal('subtotal',8,2)->default(0);$t->decimal('descuento',8,2)->default(0);$t->integer('promocion_id')->nullable();$t->string('estado');}
+                if($table==='pedidos') {$t->date('fecha_numero')->nullable();$t->integer('numero_diario')->nullable();$t->boolean('stock_reservado')->default(false);$t->integer('usuario_id');$t->dateTime('fechaHora');$t->decimal('total',8,2);$t->decimal('subtotal',8,2)->default(0);$t->decimal('descuento',8,2)->default(0);$t->integer('promocion_id')->nullable();$t->string('estado');}
                 if($table==='detalle_pedidos') {$t->integer('pedido_id');$t->integer('producto_id');$t->integer('promocion_id')->nullable();$t->integer('cantidad');$t->string('opcion');$t->decimal('precioUnitario',8,2);$t->decimal('subtotal',8,2);}
-                if($table==='ventas') {$t->integer('pedido_id')->unique();$t->integer('usuario_id');$t->dateTime('fecha_hora');$t->decimal('total',8,2);$t->string('metodo_pago');$t->decimal('monto_recibido',8,2);$t->decimal('cambio',8,2);$t->string('estado');}
-                if($table==='promociones') {$t->string('tipo');$t->string('aplicaSobre');$t->decimal('valor',10,2);$t->decimal('topeDescuento',10,2)->nullable();$t->date('fechaInicio');$t->date('fechaFin');$t->time('horaInicio')->nullable();$t->time('horaFin')->nullable();$t->boolean('activo');$t->integer('producto_id')->nullable();}
+                if($table==='ventas') {$t->decimal('monto_qr',8,2)->default(0);$t->decimal('monto_efectivo',8,2)->default(0);$t->integer('pedido_id')->unique();$t->integer('usuario_id');$t->dateTime('fecha_hora');$t->decimal('total',8,2);$t->string('metodo_pago');$t->decimal('monto_recibido',8,2);$t->decimal('cambio',8,2);$t->string('estado');}
+                if($table==='promociones') {$t->json('producto_ids')->nullable();$t->string('tipo');$t->string('aplicaSobre');$t->decimal('valor',10,2);$t->decimal('topeDescuento',10,2)->nullable();$t->date('fechaInicio');$t->date('fechaFin');$t->time('horaInicio')->nullable();$t->time('horaFin')->nullable();$t->boolean('activo');$t->integer('producto_id')->nullable();}
                 if($table==='movimiento_inventarios') {$t->string('tipo');$t->decimal('cantidad',10,2);$t->dateTime('fecha_hora');$t->string('motivo');$t->integer('usuario_id');$t->integer('producto_id');$t->integer('proveedor_id')->nullable();}
                 if($table==='bitacoras') {$t->string('tablaAfectada');$t->integer('idRegistroAfectado');$t->string('accion');$t->text('valoresAnteriores')->nullable();$t->text('valoresNuevos')->nullable();$t->dateTime('fechaHora');$t->integer('idUsuario');$t->string('ip',45)->nullable();}
             });
         }
+        Schema::create('numeradores_pedidos',function(Blueprint $t){$t->date('fecha')->primary();$t->integer('ultimo')->default(0);});
         $user = new class extends User { public function tienePermiso(string $nombre): bool { return true; } };
         $user->forceFill(['id'=>1,'nombreCompleto'=>'Prueba','estado'=>1]);$user->exists=true;
         DB::table('usuarios')->insert(['id'=>1,'nombreCompleto'=>'Prueba','estado'=>1]);$this->actingAs($user);
@@ -109,7 +110,7 @@ class InventarioPedidosTest extends TestCase
         $pedido=$this->nuevoPedido(3);
         $this->get('/admin/ventas/cobrar/'.$pedido->id)->assertOk();
         $this->post('/admin/ventas/cobrar/'.$pedido->id,['version_pedido'=>$pedido->fresh()->versionCobro(),'metodo_pago'=>'Efectivo','monto_recibido'=>20])->assertSessionHasErrors('monto_recibido');
-        $this->assertEquals(10,Stock::first()->stock_actual);$this->assertEquals(0,Venta::count());
+        $this->assertEquals(7,Stock::first()->stock_actual);$this->assertEquals(0,Venta::count());
         $pago=['version_pedido'=>$pedido->fresh()->versionCobro(),'metodo_pago'=>'Efectivo','monto_recibido'=>50,'total'=>0,'cambio'=>500];
         $this->post('/admin/ventas/cobrar/'.$pedido->id,$pago)->assertSessionHasNoErrors();
         $this->assertEquals(37.05,Venta::first()->total);$this->assertEquals(12.95,Venta::first()->cambio);
@@ -122,16 +123,14 @@ class InventarioPedidosTest extends TestCase
         $this->assertEquals('Completado',$pedido->fresh()->estado);
         $this->put('/admin/pedidos/estado/'.$pedido->id,['estado'=>'Registrado'])->assertSessionHasErrors('estado');
     }
-    public function test_pago_qr_y_falta_stock_al_cobrar_no_dejan_venta_parcial(): void
+    public function test_pago_qr_confirma_reserva_sin_descontar_otra_vez(): void
     {
         $pedido=$this->nuevoPedido();
-        Stock::first()->update(['stock_actual'=>1]);
-        $this->post('/admin/ventas/cobrar/'.$pedido->id,['version_pedido'=>$pedido->fresh()->versionCobro(),'metodo_pago'=>'QR'])->assertSessionHasErrors('pedido');
-        $this->assertEquals(0,Venta::count());$this->assertEquals('Registrado',$pedido->fresh()->estado);
-        Stock::first()->update(['stock_actual'=>10]);
-        $this->post('/admin/ventas/cobrar/'.$pedido->id,['version_pedido'=>$pedido->fresh()->versionCobro(),'metodo_pago'=>'QR','monto_recibido'=>999])->assertSessionHasNoErrors();
-        $this->assertEquals(24.70,Venta::first()->monto_recibido);$this->assertEquals(0,Venta::first()->cambio);
         $this->assertEquals(8,Stock::first()->stock_actual);
+        $this->post('/admin/ventas/cobrar/'.$pedido->id,['version_pedido'=>$pedido->versionCobro(),'metodo_pago'=>'QR'])->assertSessionHasNoErrors();
+        $this->assertEquals(8,Stock::first()->stock_actual);
+        $this->assertEquals(24.70,Venta::first()->monto_qr);
+        $this->assertEquals(1,MovimientoInventario::count());
     }
     private function datosPromocion(): array
     {
@@ -173,10 +172,10 @@ class InventarioPedidosTest extends TestCase
         $this->get('/admin/reportes/ventas-diarias?fecha='.now()->toDateString())->assertOk()->assertViewHas('total',24.70)->assertViewHas('cantidad',1);
         $this->get('/admin/reportes/metodos-pago')->assertOk()->assertSee('QR')->assertSee('24.70');
         $this->get('/admin/reportes/metodos-pago?desde=2026-10-10&hasta=2026-10-01')->assertSessionHasErrors('hasta');
-        $this->get('/admin/reportes/inventario?modo=movimientos&producto_id=1')->assertOk()->assertSee('Venta del pedido');
+        $this->get('/admin/reportes/inventario?modo=movimientos&producto_id=1')->assertOk()->assertSee('Reserva del pedido');
         foreach(['/admin/ventas','/admin/pedidos/ver/'.$pedido->id,'/admin/reportes/inventario','/admin/promociones','/admin/promociones/crear','/admin/reportes/ventas-diarias?fecha=2000-01-01'] as $url) $this->get($url)->assertOk();
         $this->get('/admin/reportes/ventas-diarias?fecha=incorrecta')->assertSessionHasErrors('fecha');
-        $denegado=new class extends User { public function tienePermiso(string $nombre): bool { return false; } };$denegado->forceFill(['id'=>1]);$this->actingAs($denegado);
+        $denegado=new class extends User { public function tienePermiso(string $nombre): bool { return false; } };$denegado->forceFill(['id'=>1,'estado'=>1]);$this->actingAs($denegado);
         foreach(['/admin/ventas','/admin/pedidos','/admin/reportes/inventario','/admin/promociones','/admin/pedidos/ver/'.$pedido->id] as $url) $this->get($url)->assertForbidden();
     }
     public function test_bitacora_filtra_fecha_usuario_accion_y_muestra_detalle(): void
@@ -196,7 +195,7 @@ class InventarioPedidosTest extends TestCase
         $this->put('/admin/bitacora/'.$evento->id,[])->assertStatus(405);
         $this->delete('/admin/bitacora/'.$evento->id)->assertStatus(405);
         Bitacora::query()->delete();$this->get('/admin/bitacora')->assertOk()->assertSee('No hay eventos registrados');
-        $denegado=new class extends User { public function tienePermiso(string $nombre): bool { return false; } };$denegado->forceFill(['id'=>1]);$this->actingAs($denegado);
+        $denegado=new class extends User { public function tienePermiso(string $nombre): bool { return false; } };$denegado->forceFill(['id'=>1,'estado'=>1]);$this->actingAs($denegado);
         $this->get('/admin/bitacora')->assertForbidden();$this->get('/admin/bitacora/'.$evento->id)->assertForbidden();
     }
     public function test_bitacora_registra_cambios_ip_sin_contrasenas_y_revierte_con_transaccion(): void
@@ -230,8 +229,8 @@ class InventarioPedidosTest extends TestCase
         DB::table('usuarios')->insert(['id'=>2,'nombreCompleto'=>'Cajero','estado'=>1]);
         $cajero=new class extends User { public function tienePermiso(string $nombre): bool { return $nombre === 'cobrar_ventas'; } };
         $cajero->forceFill(['id'=>2,'nombreCompleto'=>'Cajero','estado'=>1]);$cajero->exists=true;$this->actingAs($cajero);
-        $this->get('/admin/ventas/cobrar/'.$pedido->id)->assertOk()->assertSee('Corregir pedido')->assertSee('sin disponibilidad suficiente');
-        $this->get('/admin/ventas/corregir-pedido/'.$pedido->id)->assertOk()->assertSee('stock 1');
+        $this->get('/admin/ventas/cobrar/'.$pedido->id)->assertOk()->assertSee('Corregir pedido')->assertDontSee('sin disponibilidad suficiente');
+        $this->get('/admin/ventas/corregir-pedido/'.$pedido->id)->assertOk()->assertSee('stock 3');
         $this->get('/admin/pedidos/editar/'.$pedido->id)->assertForbidden();
         $this->put('/admin/ventas/corregir-pedido/'.$pedido->id,['detalles'=>[['producto_id'=>1,'cantidad'=>1],['producto_id'=>$otro->id,'cantidad'=>1]]])->assertSessionHasNoErrors()->assertRedirect('/admin/ventas/cobrar/'.$pedido->id);
         $this->assertEquals(23,$pedido->fresh()->total);$this->assertEquals(1,$pedido->fresh()->usuario_id);
@@ -239,7 +238,7 @@ class InventarioPedidosTest extends TestCase
         $this->assertEquals(0,Venta::count());
         $this->post('/admin/ventas/cobrar/'.$pedido->id,['version_pedido'=>$pedido->fresh()->versionCobro(),'metodo_pago'=>'Efectivo','monto_recibido'=>30])->assertSessionHasNoErrors();
         $this->assertEquals(23,Venta::first()->total);$this->assertEquals(7,Venta::first()->cambio);
-        $this->assertEquals(0,Stock::where('producto_id',1)->first()->stock_actual);
+        $this->assertEquals(2,Stock::where('producto_id',1)->first()->stock_actual);
         $this->assertEquals(9,Stock::where('producto_id',$otro->id)->first()->stock_actual);
         $this->put('/admin/ventas/corregir-pedido/'.$pedido->id,['detalles'=>[['producto_id'=>$otro->id,'cantidad'=>1]]])->assertSessionHasErrors('pedido');
         $this->assertTrue(Bitacora::where('tablaAfectada','pedidos')->where('accion','ACTUALIZAR')->where('idUsuario',2)->exists());
@@ -269,7 +268,7 @@ class InventarioPedidosTest extends TestCase
             $this->get('/admin/reportes/ventas-diarias?fecha=2026-10-06')->assertViewHas('cantidad',1)->assertViewHas('total',12.35);
             $this->get('/admin/reportes/ventas-diarias?fecha=2026-10-07')->assertViewHas('cantidad',0);
             $this->get('/admin/reportes/metodos-pago?desde=2026-10-06&hasta=2026-10-06')->assertSee('12.35');
-            $this->get('/admin/reportes/inventario?modo=movimientos&desde=2026-10-06&hasta=2026-10-06')->assertSee('Venta del pedido');
+            $this->get('/admin/reportes/inventario?modo=movimientos&desde=2026-10-06&hasta=2026-10-06')->assertSee('Reserva del pedido');
         } finally { $this->travelBack(); }
     }
     public function test_mesero_y_cajero_consultan_y_aplican_promociones_vigentes(): void
@@ -295,11 +294,82 @@ class InventarioPedidosTest extends TestCase
             $this->put('/admin/ventas/corregir-pedido/'.$pedido->id,['detalles'=>[['producto_id'=>1,'cantidad'=>2]],'promocion_id'=>$promo->id])->assertSessionHasErrors('promocion_id');
         } finally { $this->travelBack(); }
     }
+    public function test_reserva_impide_sobreventa_y_cancelar_devuelve_stock(): void
+    {
+        $pedido=$this->nuevoPedido(8);
+        $this->assertEquals(2,Stock::first()->stock_actual);
+        $this->post('/admin/pedidos/nuevo',['detalles'=>[['producto_id'=>1,'cantidad'=>3]]])->assertSessionHasErrors();
+        $this->post('/admin/pedidos/cancelar/'.$pedido->id)->assertSessionHasNoErrors();
+        $this->assertEquals(10,Stock::first()->stock_actual);
+        $this->post('/admin/pedidos/cancelar/'.$pedido->id)->assertSessionHasErrors('pedido');
+        $this->assertEquals(10,Stock::first()->stock_actual);
+    }
+    public function test_cantidades_enteras_y_edicion_fallida_conserva_reserva(): void
+    {
+        $this->movimiento('entrada',1.5)->assertSessionHasErrors('cantidad');
+        $this->put('/admin/stocks/1/minimo',['stock_minimo'=>2.5])->assertSessionHasErrors('stock_minimo');
+        $this->post('/admin/pedidos/nuevo',['detalles'=>[['producto_id'=>1,'cantidad'=>1.5]]])->assertSessionHasErrors('detalles.0.cantidad');
+        $pedido=$this->nuevoPedido(3);
+        $this->put('/admin/pedidos/editar/'.$pedido->id,['detalles'=>[['producto_id'=>1,'cantidad'=>11]]])->assertSessionHasErrors();
+        $this->assertEquals(7,Stock::first()->stock_actual);
+        $this->assertEquals(3,$pedido->fresh()->detalles->first()->cantidad);
+    }
+    public function test_numero_diario_reinicia_sin_reutilizar_id(): void
+    {
+        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-10-11 23:59:00','America/La_Paz'));
+        try {
+            $primero=$this->nuevoPedido(1);$segundo=$this->nuevoPedido(1);
+            $this->assertEquals(1,$primero->numero_diario);$this->assertEquals(2,$segundo->numero_diario);
+            $this->travelTo(now()->addMinutes(2));$tercero=$this->nuevoPedido(1);
+            $this->assertEquals(1,$tercero->numero_diario);$this->assertNotEquals($primero->id,$tercero->id);
+        } finally {$this->travelBack();}
+    }
+    public function test_pago_combinado_valida_importes_y_reporte(): void
+    {
+        $pedido=$this->nuevoPedido(2);$version=$pedido->versionCobro();
+        $datos=['version_pedido'=>$version,'metodo_pago'=>'Mixto','monto_qr'=>10,'monto_recibido'=>10];
+        $this->post('/admin/ventas/cobrar/'.$pedido->id,$datos)->assertSessionHasErrors('monto_recibido');
+        $this->assertEquals(0,Venta::count());
+        $this->post('/admin/ventas/cobrar/'.$pedido->id,array_replace($datos,['monto_recibido'=>20]))->assertSessionHasNoErrors();
+        $venta=Venta::first();$this->assertEquals(10,$venta->monto_qr);$this->assertEquals(14.70,$venta->monto_efectivo);$this->assertEquals(5.30,$venta->cambio);
+        $this->assertEquals(8,Stock::first()->stock_actual);
+        $this->get('/admin/reportes/metodos-pago')->assertOk()->assertSee('14.70')->assertSee('10.00');
+    }
+    public function test_promocion_varios_productos_descuenta_solo_seleccionados(): void
+    {
+        $otro=Producto::create(['nombre'=>'Té','precio'=>5,'disponible'=>true,'categoria_id'=>1]);Stock::create(['producto_id'=>$otro->id,'stock_actual'=>10,'stock_minimo'=>0]);
+        $tercero=Producto::create(['nombre'=>'Pan','precio'=>3,'disponible'=>true,'categoria_id'=>1]);Stock::create(['producto_id'=>$tercero->id,'stock_actual'=>10,'stock_minimo'=>0]);
+        $datos=array_replace($this->datosPromocion(),['aplicaSobre'=>'Producto','producto_ids'=>[1,$otro->id],'valor'=>50]);
+        $this->post('/admin/promociones/crear/store',$datos)->assertSessionHasNoErrors();
+        $promo=Promocion::first();$this->assertEquals([1,$otro->id],$promo->productosAplicables());
+        $this->post('/admin/pedidos/nuevo',['detalles'=>[['producto_id'=>1,'cantidad'=>1],['producto_id'=>$otro->id,'cantidad'=>1],['producto_id'=>$tercero->id,'cantidad'=>1]],'promocion_id'=>$promo->id])->assertSessionHasNoErrors();
+        $this->assertEquals(8.68,Pedido::first()->descuento);
+        $this->get('/admin/promociones')->assertOk()->assertSee('Té')->assertSee('12.35');
+    }
+    public function test_sesion_anterior_se_invalida_y_cuenta_eliminada_conserva_historial(): void
+    {
+        $pedido=$this->nuevoPedido(1);
+        $user=User::first();$user->forceFill(['session_token'=>'nuevo'])->save();
+        $this->actingAs($user)->withSession(['cuenta_token'=>'anterior'])->get('/home')->assertRedirect('/login');
+        $this->actingAs($user)->withSession(['cuenta_token'=>'nuevo'])->get('/home')->assertOk();
+        $user->delete();
+        $this->assertNull(User::find(1));$this->assertNotNull($pedido->fresh()->usuario);
+        $this->actingAs($user)->get('/home')->assertRedirect('/login');
+    }
+    public function test_recuperacion_se_envia_solo_al_administrador(): void
+    {
+        \Illuminate\Support\Facades\Notification::fake();
+        $user=User::first();$user->forceFill(['email'=>'empleado@example.com','nombreUsuario'=>'empleado']);
+        $user->sendPasswordResetNotification('codigo-prueba');
+        \Illuminate\Support\Facades\Notification::assertSentOnDemand(\App\Notifications\RecuperacionAdministrador::class,function($n,$canales,$destino){
+            return $destino->routes['mail']==='Proyectocafeteriakarma@gmail.com' && $n->email==='empleado@example.com';
+        });
+    }
     public function test_pantallas_renderizan_y_permisos_se_aplican(): void
     {
         foreach(['/admin/stocks','/admin/stock-minimo','/admin/agotados','/admin/catalogo?q=Café','/admin/inventario/ajuste','/admin/pedidos/nuevo','/admin/movimientos'] as $url) $this->get($url)->assertOk();
         $denegado=new class extends User { public function tienePermiso(string $nombre): bool { return false; } };
-        $denegado->forceFill(['id'=>1]);$this->actingAs($denegado);
+        $denegado->forceFill(['id'=>1,'estado'=>1]);$this->actingAs($denegado);
         $this->get('/admin/inventario/entrada')->assertForbidden();
         $this->post('/admin/pedidos/nuevo',['detalles'=>[['producto_id'=>1,'cantidad'=>1]]])->assertForbidden();
     }

@@ -14,6 +14,7 @@ class InventarioService
 
     public function actualizar(Producto $producto, Stock $stock, float $nuevo, int $usuario): void
     {
+        if($nuevo < 0 || floor($nuevo) !== $nuevo) throw ValidationException::withMessages(['cantidad'=>'El stock debe ser un número entero no negativo.']);
         $antes = (float) $stock->stock_actual;
         $agotadoAntes = $antes <= (float) $stock->stock_minimo;
         $agotadoAhora = $nuevo <= (float) $stock->stock_minimo;

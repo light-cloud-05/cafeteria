@@ -68,19 +68,18 @@
                                     </a>
 
                                     @if (
-                                        $usuario->estado
-                                        && (int) $usuario->id !== (int) auth()->id()
+                                        (int) $usuario->id !== (int) auth()->id()
                                     )
                                         <form
                                             method="POST"
                                             action="{{ route('admin.destroyusuario', $usuario->id) }}"
-                                            onsubmit="return confirm('¿Deseas desactivar esta cuenta?');"
+                                            onsubmit="return confirm('¿Deseas eliminar esta cuenta? Se conservará su historial.');"
                                         >
                                             @csrf
                                             @method('DELETE')
 
                                             <button type="submit" class="boton secundario">
-                                                Desactivar
+                                                Eliminar
                                             </button>
                                         </form>
                                     @endif

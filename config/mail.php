@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'recovery_admin' => env('RECOVERY_ADMIN_EMAIL', 'Proyectocafeteriakarma@gmail.com'),
 
     /*
     |--------------------------------------------------------------------------

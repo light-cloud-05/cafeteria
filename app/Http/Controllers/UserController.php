@@ -72,6 +72,7 @@ class UserController extends Controller
 
         if ($request->filled('password')) {
             $datos['password'] = Hash::make($datos['password']);
+            $usuario->session_token=null;
         } else {
             unset($datos['password']);
         }
@@ -92,11 +93,11 @@ class UserController extends Controller
         }
 
         // Conservamos la cuenta y sus operaciones anteriores.
-        $usuario->update(['estado' => 0]);
+        $usuario->delete();
 
         return redirect()
             ->route('admin.indexusuario')
-            ->with('success', 'Usuario desactivado correctamente.');
+            ->with('success', 'Usuario eliminado correctamente. El historial de operaciones se conserva.');
     }
 
     private function formulario(User $usuario)

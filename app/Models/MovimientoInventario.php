@@ -14,7 +14,7 @@ class MovimientoInventario extends Model
     protected $table = 'movimiento_inventarios';
 
     public function producto() { return $this->belongsTo(Producto::class); }
-    public function usuario() { return $this->belongsTo(User::class, 'usuario_id'); }
+    public function usuario() { return $this->belongsTo(User::class, 'usuario_id')->withTrashed(); }
     public function proveedor() { return $this->belongsTo(Proveedor::class); }
 
     protected $fillable = [

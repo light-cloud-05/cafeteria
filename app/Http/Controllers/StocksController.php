@@ -6,7 +6,7 @@ class StocksController extends Controller
 {
     public function minimo(Request $request, int $id)
     {
-        $datos = $request->validate(['stock_minimo'=>'required|numeric|min:0|max:99999999.99|decimal:0,2']);
+        $datos = $request->validate(['stock_minimo'=>'required|integer|min:0|max:99999999']);
         \Illuminate\Support\Facades\DB::transaction(function() use($id,$datos) {
             $producto = Producto::lockForUpdate()->findOrFail($id);
             $servicio = app(\App\Services\InventarioService::class);

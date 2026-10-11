@@ -13,7 +13,7 @@ class Pedido extends Model
 
     protected $table = 'pedidos';
 
-    public function usuario() { return $this->belongsTo(User::class, 'usuario_id'); }
+    public function usuario() { return $this->belongsTo(User::class, 'usuario_id')->withTrashed(); }
     public function detalles() { return $this->hasMany(DetallePedido::class); }
     public function venta() { return $this->hasOne(Venta::class); }
     public function promocion() { return $this->belongsTo(Promocion::class); }
@@ -26,6 +26,7 @@ class Pedido extends Model
     }
 
     protected $fillable = [
+        'fecha_numero', 'numero_diario', 'stock_reservado',
         'fechaHora',
         'total',
         'subtotal',

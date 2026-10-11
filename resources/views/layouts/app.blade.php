@@ -119,10 +119,12 @@
                     </div>
                 @endif
 
+                <button type="button" class="boton secundario" onclick="window.location.reload()">Actualizar</button>
                 @yield('contenido')
             </main>
         </div>
     </div>
     <script src="{{ asset('js-borradores.js') }}" defer></script>
+<script src="{{ asset('js-busqueda.js') }}" defer></script>
 </body>
 </html>

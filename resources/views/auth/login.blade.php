@@ -192,5 +192,6 @@
         actualizarContador();
     })();
 </script>
+<script>const clave=document.querySelector('input[type="password"]');const ver=document.createElement("button");ver.type="button";ver.textContent="👁 Ver contraseña";ver.setAttribute("aria-pressed","false");clave.after(ver);ver.onclick=()=>{const visible=clave.type==="password";clave.type=visible ? "text" : "password";ver.textContent=visible ? "Ocultar contraseña" : "👁 Ver contraseña";ver.setAttribute("aria-pressed",String(visible));};</script>
 </body>
 </html>

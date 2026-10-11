@@ -22,8 +22,11 @@ class ReportesController extends Controller
     {
         [$desde,$hasta]=$this->rango($request);
         $ventas=Venta::entreFechas('fecha_hora',$desde,$hasta)->where('estado','Completado')->get();
-        $resumen=$ventas->groupBy(fn($v)=>in_array($v->metodo_pago,['QR','Transferencia QR']) ? 'QR' : $v->metodo_pago)
-            ->map(fn($grupo)=>['cantidad'=>$grupo->count(),'total'=>$grupo->sum('total')]);
+        $resumen=collect();
+        foreach($ventas as $venta) foreach(['QR'=>(float)$venta->monto_qr,'Efectivo'=>(float)$venta->monto_efectivo] as $metodo=>$monto) {
+            if($monto<=0) continue;
+            $fila=$resumen->get($metodo,['cantidad'=>0,'total'=>0]);$fila['cantidad']++;$fila['total']+=$monto;$resumen->put($metodo,$fila);
+        }
         return view('reportes.pagos',compact('resumen','desde','hasta'));
     }
     public function inventario(Request $request)

@@ -8,6 +8,9 @@ use Illuminate\Database\Eloquent\Model;
 class Promocion extends Model
 {
     use HasFactory;
+    protected $casts = ['producto_ids'=>'array'];
+    public function productosAplicables(): array { return $this->producto_ids ?: ($this->producto_id ? [(int)$this->producto_id] : []); }
+    public function aplicaProducto(int $id): bool { return $this->aplicaSobre === 'Pedido' || in_array($id,$this->productosAplicables()); }
 
     protected $table = 'promociones';
     public function producto() { return $this->belongsTo(Producto::class); }
@@ -21,7 +24,7 @@ class Promocion extends Model
         if (!$this->activo) return 'Inactiva';
         if (!in_array($this->tipo, ['Porcentaje','Monto fijo'])
             || !in_array($this->aplicaSobre, ['Pedido','Producto'])
-            || ($this->aplicaSobre === 'Producto' && !$this->producto_id)) return 'Configuración incompleta';
+            || ($this->aplicaSobre === 'Producto' && !$this->productosAplicables())) return 'Configuración incompleta';
         if ($ahora->toDateString() < $this->fechaInicio) return 'Programada: todavía no inicia';
         if ($ahora->toDateString() > $this->fechaFin) return 'Vencida';
         $inicio = $this->horaInicio ? substr($this->horaInicio,0,5) : null;
@@ -49,6 +52,6 @@ class Promocion extends Model
         'horaInicio',
         'horaFin',
         'activo',
-        'producto_id',
+        'producto_id', 'producto_ids',
     ];
 }

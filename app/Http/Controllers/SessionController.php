@@ -37,7 +37,7 @@ class SessionController extends Controller
 
         $maxIntentos = 3;
         $ventanaIntentos = 15 * 60;
-        $duracionBloqueo = 0.5 * 60;
+        $duracionBloqueo = 5 * 60;
 
         // Durante el bloqueo no comprobamos la contraseña.
         if (RateLimiter::tooManyAttempts($claveBloqueo, 1)) {
@@ -104,6 +104,9 @@ $request->session()->put(
         $request->session()->forget('login_bloqueo_hasta');
 
         $request->session()->regenerate();
+        $token=bin2hex(random_bytes(32));
+        Auth::user()->forceFill(['session_token'=>$token])->save();
+        $request->session()->put('cuenta_token',$token);
 
         return redirect()->route('home');
     }

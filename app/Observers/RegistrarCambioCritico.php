@@ -6,7 +6,7 @@ class RegistrarCambioCritico
 {
     private function datos(array $datos): array
     {
-        return array_diff_key($datos,array_flip(['password','remember_token','_token','created_at','updated_at']));
+        return array_diff_key($datos,array_flip(['password','session_token','remember_token','_token','created_at','updated_at']));
     }
     public function created(Model $modelo): void { $this->registrar($modelo,'CREAR',null,$this->datos($modelo->getAttributes())); }
     public function updated(Model $modelo): void

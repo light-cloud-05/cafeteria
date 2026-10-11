@@ -8,7 +8,10 @@ use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, \Illuminate\Database\Eloquent\SoftDeletes;
+    public function sendPasswordResetNotification($token) {
+        \Illuminate\Support\Facades\Notification::route('mail',config('mail.recovery_admin'))->notify(new \App\Notifications\RecuperacionAdministrador($token,$this->email,$this->nombreUsuario));
+    }
 
     protected $table = 'usuarios'; 
 
@@ -23,7 +26,7 @@ class User extends Authenticatable
      ];
 
     protected $hidden = [
-        'password'
+        'password', 'session_token'
     ];
 
     protected function casts(): array
