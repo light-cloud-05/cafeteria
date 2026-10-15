@@ -7,7 +7,7 @@
 @csrf
 <input type="hidden" data-errores="{{ $errors->any() ? '1' : '0' }}">
 <div class="campo"><label>Producto</label><select name="producto_id" required><option value="">Seleccionar</option>@foreach($productos as $producto)<option value="{{ $producto->id }}" data-stock="{{ $producto->stock?->stock_actual ?? 0 }}" @selected(old('producto_id') == $producto->id)>{{ $producto->nombre }} — stock {{ $producto->stock?->stock_actual ?? 0 }}</option>@endforeach</select></div>
-<div class="campo"><label>{{ $tipo === 'ajuste' ? 'Cantidad real contada' : 'Cantidad' }}</label><input name="cantidad" type="number" step="1" min="{{ $tipo === 'ajuste' ? '0' : '0.01' }}" max="99999999" value="{{ old('cantidad') }}" required></div>
+<div class="campo"><label>{{ $tipo === 'ajuste' ? 'Cantidad real contada' : 'Cantidad' }}</label><input name="cantidad" type="number" inputmode="numeric" step="1" min="{{ $tipo === 'ajuste' ? '0' : '1' }}" max="99999999" value="{{ old('cantidad') }}" required></div>
 @if($tipo === 'ajuste')<p id="diferencia" role="status"></p>@endif
 @if($tipo === 'entrada')<div class="campo"><label>Proveedor (opcional)</label><select name="proveedor_id"><option value="">Sin proveedor</option>@foreach($proveedores as $proveedor)<option value="{{ $proveedor->id }}" @selected(old('proveedor_id') == $proveedor->id)>{{ $proveedor->nombre }}</option>@endforeach</select></div>@endif
 <div class="campo"><label>Motivo</label><input name="motivo" maxlength="255" value="{{ old('motivo') }}" required></div>

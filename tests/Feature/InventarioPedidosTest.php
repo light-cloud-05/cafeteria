@@ -16,7 +16,7 @@ class InventarioPedidosTest extends TestCase
                 $t->id();$t->timestamps();
                 if(in_array($table,['categorias','productos','proveedores','promociones'])) $t->string('nombre');
                 if(in_array($table,['categorias','proveedores','usuarios'])) $t->boolean('estado')->default(true);
-                if($table==='usuarios') {$t->string('nombreCompleto');$t->string('nombreUsuario')->nullable();$t->string('password')->nullable();$t->softDeletes();$t->string('session_token',64)->nullable();}
+                if($table==='usuarios') {$t->string('nombreCompleto');$t->string('nombreUsuario')->nullable();$t->string('password')->nullable();$t->softDeletes();$t->string('session_token',64)->nullable();$t->unsignedBigInteger('session_last_activity')->nullable();}
                 if($table==='productos') {$t->decimal('precio',8,2);$t->boolean('disponible');$t->integer('categoria_id');$t->integer('proveedor_id')->nullable();}
                 if($table==='stocks') {$t->integer('producto_id')->unique();$t->decimal('stock_actual',10,2);$t->decimal('stock_minimo',10,2);$t->dateTime('fecha_actualizacion')->nullable();}
                 if($table==='pedidos') {$t->date('fecha_numero')->nullable();$t->integer('numero_diario')->nullable();$t->boolean('stock_reservado')->default(false);$t->integer('usuario_id');$t->dateTime('fechaHora');$t->decimal('total',8,2);$t->decimal('subtotal',8,2)->default(0);$t->decimal('descuento',8,2)->default(0);$t->integer('promocion_id')->nullable();$t->string('estado');}
@@ -345,6 +345,27 @@ class InventarioPedidosTest extends TestCase
         $this->post('/admin/pedidos/nuevo',['detalles'=>[['producto_id'=>1,'cantidad'=>1],['producto_id'=>$otro->id,'cantidad'=>1],['producto_id'=>$tercero->id,'cantidad'=>1]],'promocion_id'=>$promo->id])->assertSessionHasNoErrors();
         $this->assertEquals(8.68,Pedido::first()->descuento);
         $this->get('/admin/promociones')->assertOk()->assertSee('Té')->assertSee('12.35');
+    }
+    public function test_segundo_acceso_no_desplaza_al_primero_y_logout_libera_la_cuenta(): void
+    {
+        $user=User::first();
+        $user->forceFill(['nombreUsuario'=>'admin-prueba','password'=>\Illuminate\Support\Facades\Hash::make('ClavePrueba123'),'session_token'=>'primero','session_last_activity'=>now()->timestamp])->save();
+        auth()->logout();
+        $this->post('/login',['nombreUsuario'=>'admin-prueba','password'=>'ClavePrueba123'])->assertSessionHasErrors('nombreUsuario');
+        $this->assertGuest();
+        $this->assertEquals('primero',$user->fresh()->session_token);
+        $this->actingAs($user)->withSession(['cuenta_token'=>'primero'])->post('/logout')->assertRedirect('/login');
+        $this->assertNull($user->fresh()->session_token);
+        $this->post('/login',['nombreUsuario'=>'admin-prueba','password'=>'ClavePrueba123'])->assertSessionHasNoErrors()->assertRedirect('/home');
+        $this->assertAuthenticated();
+    }
+    public function test_sesion_vencida_permite_un_nuevo_acceso(): void
+    {
+        $user=User::first();
+        $user->forceFill(['nombreUsuario'=>'admin-prueba','password'=>\Illuminate\Support\Facades\Hash::make('ClavePrueba123'),'session_token'=>'vencido','session_last_activity'=>now()->subMinutes((int)config('session.lifetime')+1)->timestamp])->save();
+        auth()->logout();
+        $this->post('/login',['nombreUsuario'=>'admin-prueba','password'=>'ClavePrueba123'])->assertSessionHasNoErrors()->assertRedirect('/home');
+        $this->assertNotEquals('vencido',$user->fresh()->session_token);
     }
     public function test_sesion_anterior_se_invalida_y_cuenta_eliminada_conserva_historial(): void
     {

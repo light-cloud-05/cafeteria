@@ -97,7 +97,6 @@
                             aria-describedby="error-usuario"
                         @enderror
                         required
-                        autofocus
                     >
 
                     @error('nombreUsuario')
@@ -110,7 +109,7 @@
                 <div class="campo">
                     <label for="password">Contraseña</label>
 
-                    <input
+                    <div class="clave-con-control"><input
                         type="password"
                         id="password"
                         name="password"
@@ -122,6 +121,7 @@
                         @enderror
                         required
                     >
+                    <button class="ver-clave" type="button" aria-controls="password" aria-pressed="false" aria-label="Mostrar contraseña"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg><span>Ver</span></button></div>
 
                     @error('password')
                         <p id="error-password" class="error-campo" role="alert">
@@ -192,6 +192,6 @@
         actualizarContador();
     })();
 </script>
-<script>const clave=document.querySelector('input[type="password"]');const ver=document.createElement("button");ver.type="button";ver.textContent="👁 Ver contraseña";ver.setAttribute("aria-pressed","false");clave.after(ver);ver.onclick=()=>{const visible=clave.type==="password";clave.type=visible ? "text" : "password";ver.textContent=visible ? "Ocultar contraseña" : "👁 Ver contraseña";ver.setAttribute("aria-pressed",String(visible));};</script>
+<script>const clave=document.getElementById('password'),ver=document.querySelector('.ver-clave');ver.addEventListener('click',()=>{const visible=clave.type==='password';clave.type=visible?'text':'password';ver.querySelector('span').textContent=visible?'Ocultar':'Ver';ver.setAttribute('aria-label',visible?'Ocultar contraseña':'Mostrar contraseña');ver.setAttribute('aria-pressed',String(visible));});</script>
 </body>
 </html>

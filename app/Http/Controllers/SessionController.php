@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\DB;
+use App\Models\User;
 
 class SessionController extends Controller
 {
@@ -63,7 +65,7 @@ $request->session()->put(
             'estado' => 1,
         ];
 
-        if (! Auth::attempt($credenciales)) {
+        if (! Auth::validate($credenciales)) {
             RateLimiter::hit($claveIntentos, $ventanaIntentos);
 
             $intentos = RateLimiter::attempts($claveIntentos);
@@ -97,6 +99,23 @@ $request->session()->put(
                 ->withInput($request->only('nombreUsuario'));
         }
 
+        $usuario = DB::transaction(function () use ($credenciales) {
+            $usuario = User::where('nombreUsuario', $credenciales['nombreUsuario'])->lockForUpdate()->firstOrFail();
+            $ultimaActividad = $usuario->session_last_activity ?? $usuario->updated_at?->timestamp;
+            if ($usuario->session_token && $ultimaActividad &&
+                $ultimaActividad > now()->subMinutes((int) config('session.lifetime'))->timestamp) {
+                return null;
+            }
+            $usuario->forceFill([
+                'session_token' => bin2hex(random_bytes(32)),
+                'session_last_activity' => now()->timestamp,
+            ])->save();
+            return $usuario;
+        });
+        if (!$usuario) {
+            return back()->withErrors(['nombreUsuario' => 'Usuario ocupado. Acceso denegado: esta cuenta ya tiene una sesión activa.'])->withInput($request->only('nombreUsuario'));
+        }
+        Auth::login($usuario);
         // Inicio de sesión correcto.
         RateLimiter::clear($claveIntentos);
         RateLimiter::clear($claveBloqueo);
@@ -104,15 +123,15 @@ $request->session()->put(
         $request->session()->forget('login_bloqueo_hasta');
 
         $request->session()->regenerate();
-        $token=bin2hex(random_bytes(32));
-        Auth::user()->forceFill(['session_token'=>$token])->save();
-        $request->session()->put('cuenta_token',$token);
+        $request->session()->put('cuenta_token', $usuario->session_token);
 
         return redirect()->route('home');
     }
 
     public function destroy(Request $request)
     {
+        User::whereKey($request->user()->id)->where('session_token', $request->session()->get('cuenta_token'))
+            ->update(['session_token' => null, 'session_last_activity' => null]);
         Auth::logout();
 
         $request->session()->invalidate();

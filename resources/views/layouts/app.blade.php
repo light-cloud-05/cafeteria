@@ -14,7 +14,8 @@
             <h2 class="marca">KARMA</h2>
             <p class="subtitulo">Gestión de cafetería</p>
 
-            <nav aria-label="Menú principal">
+            <button type="button" class="menu-movil boton secundario" aria-expanded="false" aria-controls="menu-principal">☰ Menú</button>
+            <nav id="menu-principal" aria-label="Menú principal">
                 <a
                     href="{{ route('home') }}"
                     class="{{ request()->routeIs('home') ? 'activo' : '' }}"
@@ -125,6 +126,7 @@
         </div>
     </div>
     <script src="{{ asset('js-borradores.js') }}" defer></script>
+    <script>document.querySelector('.menu-movil').addEventListener('click', function () { const abierto=this.getAttribute('aria-expanded')!=='true'; this.setAttribute('aria-expanded', String(abierto)); document.querySelector('.sidebar').classList.toggle('menu-abierto', abierto); });</script>
 <script src="{{ asset('js-busqueda.js') }}" defer></script>
 </body>
 </html>

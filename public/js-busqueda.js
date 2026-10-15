@@ -16,6 +16,7 @@
         }));
     }
     document.querySelectorAll('table').forEach(tabla => {
+        if (tabla.dataset.busquedaRemota) return;
         const encabezados = Array.from(tabla.querySelectorAll('thead th'));
         const columna = encabezados.findIndex(th => /producto/i.test(th.textContent));
         const listadoProductos = /\/productos$|\/stocks$|\/stock-minimo$|\/agotados$|\/catalogo$/.test(location.pathname);
