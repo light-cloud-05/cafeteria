@@ -11,14 +11,12 @@ class MetodoPagosSeeder extends Seeder
     {
         $registros = [
             ['id' => 1, 'nombre' => 'Efectivo'],
-            ['id' => 2, 'nombre' => 'Tarjeta de Débito'],
-            ['id' => 3, 'nombre' => 'Tarjeta de Crédito'],
-            ['id' => 4, 'nombre' => 'Transferencia QR'],
-            ['id' => 5, 'nombre' => 'Billetera Móvil'],
+            ['nombre' => 'QR'],
+            ['nombre' => 'Mixto'],
         ];
 
         foreach ($registros as $item) {
-            MetodoPago::create($item);
+            MetodoPago::firstOrCreate(['nombre' => $item['nombre']]);
         }
     }
 }

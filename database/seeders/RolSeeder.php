@@ -16,7 +16,7 @@ class RolSeeder extends Seeder
         ];
 
         foreach ($registros as $item) {
-            Rol::create($item);
+            Rol::firstOrCreate(['nombre' => $item['nombre']], ['estado' => $item['estado']]);
         }
     }
 }

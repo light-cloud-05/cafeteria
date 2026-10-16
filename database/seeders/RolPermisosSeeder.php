@@ -9,7 +9,7 @@ use App\Models\Permiso;
 
 class RolPermisosSeeder extends Seeder
 {
-    public function run(): void
+    public function run(array $rolesNuevos = []): void
     {
         $asignaciones = [
             'Administrador' => [
@@ -50,9 +50,14 @@ class RolPermisosSeeder extends Seeder
             ],
         ];
 
-        DB::transaction(function () use ($asignaciones) {
+        DB::transaction(function () use ($asignaciones, $rolesNuevos) {
             foreach ($asignaciones as $nombreRol => $nombresPermisos) {
                 $rol = Rol::where('nombre', $nombreRol)->firstOrFail();
+
+                // Solo inicializar roles nuevos; conservar las decisiones de la interfaz.
+                if (! in_array($rol->getKey(), $rolesNuevos)) {
+                    continue;
+                }
 
                 $relaciones = [];
 

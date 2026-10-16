@@ -11,23 +11,16 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        $rolesExistentes = \App\Models\Rol::pluck('rol_id');
+
         $this->call([
             RolSeeder::class,
-            UserSeeder::class,
-            CategoriaSeeder::class,
-            ProveedorSeeder::class,
             PermisoSeeder::class,
             MetodoPagosSeeder::class,
-            PromocionesSeeder::class,
-            RolPermisosSeeder::class,
-            ProductoSeeder::class,
-            StocksSeeder::class,
-            MovimientoInventarioSeeder::class,
-            CierreCajasSeeder::class,
-            PedidoSeeder::class,
-            DetallePedidoSeeder::class,
-            VentaSeeder::class,
-            BitacorasSeeder::class
+        ]);
+
+        $this->callWith(RolPermisosSeeder::class, [
+            'rolesNuevos' => \App\Models\Rol::whereNotIn('rol_id', $rolesExistentes)->pluck('rol_id')->all(),
         ]);
     }
 }
