@@ -7,24 +7,25 @@
     <title>Recuperar contraseña | KARMA</title>
 
     <link rel="stylesheet" href="{{ asset('css/login.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/auth-modern.css') }}">
 </head>
 <body>
     <main class="login">
-        <header class="marca">
-            <p class="marca-nombre">KARMA</p>
-            <p class="marca-descripcion">Gestión de cafetería</p>
+        <header class="marca marca-auth">
+            <img class="logo-auth" src="{{ asset('images/karma.png') }}" alt="Cafetería Karma">
+            <p class="marca-descripcion">Un café. Un momento. Todo en orden.</p>
         </header>
 
         <section class="tarjeta-login">
             <h1>Recuperar contraseña</h1>
 
             <p class="introduccion">
-                Ingresa el correo asociado a tu cuenta.
+                Ingresa tu nombre de usuario. El administrador recibirá la solicitud y verificará tu identidad antes de facilitarte un enlace temporal para elegir una nueva contraseña.
             </p>
 
             @if (session('success'))
                 <div class="aviso-exito" role="status">
-                    {{ session('success') }}
+                    @include('partials.icono', ['nombre' => 'check'])<span>{{ session('success') }}</span>
                 </div>
             @endif
 
@@ -32,19 +33,21 @@
                 @csrf
 
                 <div class="campo">
-                    <label for="email">Correo electrónico</label>
+                    <label for="nombreUsuario">Usuario que necesita recuperar el acceso</label>
 
-                    <input
-                        type="email"
-                        id="email"
-                        name="email"
-                        value="{{ old('email') }}"
-                        maxlength="255"
-                        autocomplete="email"
+                    <div class="input-icono">@include('partials.icono', ['nombre' => 'usuarios'])<input
+                        type="text"
+                        id="nombreUsuario"
+                        name="nombreUsuario"
+                        value="{{ old('nombreUsuario', $nombreUsuario ?? '') }}"
+                        maxlength="100"
+                        autocomplete="username"
+                        autocapitalize="none"
+                        spellcheck="false"
                         required
-                    >
+                    ></div>
 
-                    @error('email')
+                    @error('nombreUsuario')
                         <p class="error-campo" role="alert">
                             {{ $message }}
                         </p>

@@ -7,28 +7,13 @@
     <title>Iniciar sesión | KARMA Cafetería</title>
 
     <link rel="stylesheet" href="{{ asset('css/login.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/auth-modern.css') }}">
 </head>
 <body>
     <main class="login">
-        <header class="marca">
-            <div class="marca-icono" aria-hidden="true">
-                <svg
-                    viewBox="0 0 32 32"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.8"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                >
-                    <path d="M7 12h16v8a6 6 0 0 1-6 6h-4a6 6 0 0 1-6-6z"/>
-                    <path d="M23 13h2a4 4 0 0 1 0 8h-2"/>
-                    <path d="M5 29h22"/>
-                    <path d="M11 8V4M16 8V3M21 8V4"/>
-                </svg>
-            </div>
-
-            <p class="marca-nombre">KARMA</p>
-            <p class="marca-descripcion">Gestión de cafetería</p>
+        <header class="marca marca-auth">
+            <img class="logo-auth" src="{{ asset('images/karma.png') }}" alt="Cafetería Karma">
+            <p class="marca-descripcion">Un café. Un momento. Todo en orden.</p>
         </header>
 
         <section class="tarjeta-login" aria-labelledby="titulo-login">
@@ -72,7 +57,7 @@
 
             @if (session('success'))
                 <div class="aviso-exito" role="status">
-                    {{ session('success') }}
+                    @include('partials.icono', ['nombre' => 'check'])<span>{{ session('success') }}</span>
                 </div>
             @endif
 
@@ -82,7 +67,7 @@
                 <div class="campo">
                     <label for="nombreUsuario">Usuario</label>
 
-                    <input
+                    <div class="input-icono">@include('partials.icono', ['nombre' => 'usuarios'])<input
                         type="text"
                         id="nombreUsuario"
                         name="nombreUsuario"
@@ -97,7 +82,7 @@
                             aria-describedby="error-usuario"
                         @enderror
                         required
-                    >
+                    ></div>
 
                     @error('nombreUsuario')
                         <p id="error-usuario" class="error-campo" role="alert">
@@ -109,7 +94,7 @@
                 <div class="campo">
                     <label for="password">Contraseña</label>
 
-                    <div class="clave-con-control"><input
+                    <div class="clave-con-control"><div class="input-icono">@include('partials.icono', ['nombre' => 'lock'])<input
                         type="password"
                         id="password"
                         name="password"
@@ -120,7 +105,7 @@
                             aria-describedby="error-password"
                         @enderror
                         required
-                    >
+                    ></div>
                     <button class="ver-clave" type="button" aria-controls="password" aria-pressed="false" aria-label="Mostrar contraseña"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg><span>Ver</span></button></div>
 
                     @error('password')
@@ -135,7 +120,7 @@
                 </button>
             </form>
             <p class="ayuda">
-    <a href="{{ route('password.request') }}">
+    <a id="recuperar-acceso" href="{{ route('password.request') }}">
         ¿Olvidaste tu contraseña?
     </a>
 </p>
@@ -193,5 +178,18 @@
     })();
 </script>
 <script>const clave=document.getElementById('password'),ver=document.querySelector('.ver-clave');ver.addEventListener('click',()=>{const visible=clave.type==='password';clave.type=visible?'text':'password';ver.querySelector('span').textContent=visible?'Ocultar':'Ver';ver.setAttribute('aria-label',visible?'Ocultar contraseña':'Mostrar contraseña');ver.setAttribute('aria-pressed',String(visible));});</script>
+<script>
+document.getElementById('recuperar-acceso').addEventListener('click', function (evento) {
+    const usuario = document.getElementById('nombreUsuario');
+    usuario.value = usuario.value.trim();
+    if (!usuario.reportValidity()) {
+        evento.preventDefault();
+        return;
+    }
+    const destino = new URL(this.href);
+    destino.searchParams.set('nombreUsuario', usuario.value);
+    this.href = destino.toString();
+});
+</script>
 </body>
 </html>

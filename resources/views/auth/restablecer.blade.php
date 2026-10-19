@@ -7,12 +7,13 @@
     <title>Nueva contraseña | KARMA</title>
 
     <link rel="stylesheet" href="{{ asset('css/login.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/auth-modern.css') }}">
 </head>
 <body>
     <main class="login">
-        <header class="marca">
-            <p class="marca-nombre">KARMA</p>
-            <p class="marca-descripcion">Gestión de cafetería</p>
+        <header class="marca marca-auth">
+            <img class="logo-auth" src="{{ asset('images/karma.png') }}" alt="Cafetería Karma">
+            <p class="marca-descripcion">Un café. Un momento. Todo en orden.</p>
         </header>
 
         <section class="tarjeta-login">
@@ -40,20 +41,21 @@
                 <div class="campo">
                     <label for="email">Correo electrónico</label>
 
-                    <input
+                    <div class="input-icono">@include('partials.icono', ['nombre' => 'mail'])<input
                         type="email"
                         id="email"
                         name="email"
                         value="{{ $email }}"
                         readonly
                         required
-                    >
+                    ></div>
                 </div>
 
                 <div class="campo">
                     <label for="password">Nueva contraseña</label>
 
-                    <input
+                    <div class="clave-con-control">
+                    <div class="input-icono">@include('partials.icono', ['nombre' => 'lock'])<input
                         type="password"
                         id="password"
                         name="password"
@@ -61,7 +63,11 @@
                         maxlength="64"
                         autocomplete="new-password"
                         required
-                    >
+                    ></div>
+                        <button class="ver-clave" type="button" aria-controls="password" aria-pressed="false" aria-label="Mostrar nueva contraseña" data-descripcion="nueva contraseña">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg><span>Ver</span>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="campo">
@@ -69,7 +75,8 @@
                         Confirmar contraseña
                     </label>
 
-                    <input
+                    <div class="clave-con-control">
+                    <div class="input-icono">@include('partials.icono', ['nombre' => 'lock'])<input
                         type="password"
                         id="password_confirmation"
                         name="password_confirmation"
@@ -77,7 +84,11 @@
                         maxlength="64"
                         autocomplete="new-password"
                         required
-                    >
+                    ></div>
+                        <button class="ver-clave" type="button" aria-controls="password_confirmation" aria-pressed="false" aria-label="Mostrar confirmación de contraseña" data-descripcion="confirmación de contraseña">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg><span>Ver</span>
+                        </button>
+                    </div>
                 </div>
 
                 <button type="submit" class="boton-ingresar">
@@ -92,5 +103,17 @@
             </p>
         </section>
     </main>
+<script>
+    document.querySelectorAll('.ver-clave').forEach((boton) => {
+        boton.addEventListener('click', () => {
+            const campo = document.getElementById(boton.getAttribute('aria-controls'));
+            const visible = campo.type === 'password';
+            campo.type = visible ? 'text' : 'password';
+            boton.querySelector('span').textContent = visible ? 'Ocultar' : 'Ver';
+            boton.setAttribute('aria-pressed', String(visible));
+            boton.setAttribute('aria-label', (visible ? 'Ocultar ' : 'Mostrar ') + boton.dataset.descripcion);
+        });
+    });
+</script>
 </body>
 </html> 

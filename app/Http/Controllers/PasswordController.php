@@ -13,40 +13,53 @@ use Illuminate\Validation\ValidationException;
 class PasswordController extends Controller
 {
     // Mostrar la solicitud de recuperación.
-    public function index()
+    public function index(Request $request)
     {
-        return view('auth.recuperar');
+        return view('auth.recuperar', ['nombreUsuario' => mb_substr((string) $request->query('nombreUsuario', ''), 0, 100)]);
     }
 
     // Generar el enlace para una cuenta activa.
     public function store(Request $request)
     {
         $datos = $request->validate([
-            'email' => ['required', 'email', 'max:255'],
+            'nombreUsuario' => ['required', 'string', 'max:100'],
         ], [
-            'email.required' => 'Escribe tu correo electrónico.',
-            'email.email' => 'Escribe un correo válido.',
-            'email.max' => 'El correo admite hasta 255 caracteres.',
+            'nombreUsuario.required' => 'Escribe el usuario que necesita recuperar su contraseña.',
+            'nombreUsuario.max' => 'El usuario admite hasta 100 caracteres.',
         ]);
 
-        $usuario = User::where('email', $datos['email'])
+        $usuario = User::where('nombreUsuario', $datos['nombreUsuario'])
             ->where('estado', 1)
             ->whereHas('rol', function ($consulta) {
                 $consulta->where('estado', 1);
             })
             ->first();
 
-        if ($usuario !== null) {
-            Password::sendResetLink([
+        if (!in_array(config('mail.default'), ['smtp', 'sendmail', 'ses', 'ses-v2', 'mailgun', 'postmark', 'roundrobin'])) {
+            return back()->withErrors(['nombreUsuario' => 'El envío de correo no está habilitado. Contacta al administrador.'])->withInput($request->only('nombreUsuario'));
+        }
+
+        if ($usuario !== null && filter_var($usuario->email, FILTER_VALIDATE_EMAIL)) {
+            try {
+                $estado = Password::sendResetLink([
                 'email' => $usuario->email,
                 'estado' => 1,
-            ]);
+                ]);
+                if (!in_array($estado, [Password::RESET_LINK_SENT, Password::RESET_THROTTLED])) {
+                    throw new \RuntimeException('El broker de recuperación no pudo generar el enlace.');
+                }
+            } catch (\Throwable $e) {
+                Password::deleteToken($usuario);
+                // No registrar credenciales SMTP ni enlaces de recuperación.
+                \Illuminate\Support\Facades\Log::error('Falló el envío de recuperación al administrador.', ['tipo' => get_class($e)]);
+                return back()->withErrors(['nombreUsuario' => 'No se pudo enviar la solicitud al administrador. Intenta más tarde o contáctalo directamente.'])->withInput($request->only('nombreUsuario'));
+            }
         }
 
         // Mismo mensaje para no revelar qué cuentas existen.
         return back()->with(
             'success',
-            'Si el correo corresponde a una cuenta activa, se enviará la recuperación al administrador para autorizarla. Si ya la solicitaste, espera un minuto antes de repetirla.'
+            'Si el usuario corresponde a una cuenta activa con correo registrado, se ha enviado la solicitud al administrador. Él verificará tu identidad y te facilitará un enlace temporal. Si ya la solicitaste, espera un minuto antes de repetirla.'
         );
     }
 
@@ -86,6 +99,7 @@ class PasswordController extends Controller
             'password.confirmed' => 'Las contraseñas no coinciden.',
         ]);
 
+        $usuarioRestablecido = null;
         $estado = Password::reset(
             [
                 'email' => $datos['email'],
@@ -95,7 +109,7 @@ class PasswordController extends Controller
                     $request->input('password_confirmation'),
                 'estado' => 1,
             ],
-            function (User $usuario, string $password) {
+            function (User $usuario, string $password) use (&$usuarioRestablecido) {
                 if (! $usuario->rol || ! $usuario->rol->estado) {
                     throw ValidationException::withMessages([
                         'email' =>
@@ -118,16 +132,27 @@ RateLimiter::clear('login:intentos:' . $identificador);
 RateLimiter::clear('login:bloqueo:' . $identificador);
 
 event(new PasswordReset($usuario));
+                $usuarioRestablecido = $usuario;
             }
         );
 
         if ($estado === Password::PASSWORD_RESET) {
             $request->session()->forget('login_bloqueo_hasta');
+            $aviso = 'Contraseña actualizada. Se envió un aviso al correo personal del usuario con un enlace para elegir su propia contraseña.';
+            try {
+                // El broker ya consumió el enlace anterior; este nuevo token va solo al titular.
+                $tokenPersonal = Password::createToken($usuarioRestablecido);
+                $enlace = route('password.reset', ['token' => $tokenPersonal, 'email' => $usuarioRestablecido->email]);
+                $usuarioRestablecido->notify(new \App\Notifications\ContrasenaRestablecida($usuarioRestablecido->nombreUsuario, $enlace));
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Falló el aviso de contraseña restablecida al usuario.', ['tipo' => get_class($e)]);
+                $aviso = 'Contraseña actualizada, pero no se pudo enviar el aviso al usuario. Contacta al administrador para coordinar el acceso.';
+            }
             return redirect()
                 ->route('login')
                 ->with(
                     'success',
-                    'Contraseña actualizada. Ya puedes iniciar sesión.'
+                    $aviso
                 );
         }
 

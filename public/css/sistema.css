@@ -56,6 +56,20 @@ body {
     min-width: 0;
 }
 
+.menu-etiqueta { margin: 16px 0 4px; color: #ddd0c6; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+.paquete-boton { display: flex; align-items: center; gap: 9px; width: 100%; padding: 12px 8px; border: 0; border-radius: 8px; background: transparent; color: white; font: inherit; text-align: left; cursor: pointer; }
+.paquete-boton:hover, .paquete-boton.activo, .paquete-boton[aria-expanded="true"] { background: #70513f; }
+.paquete-codigo { flex-shrink: 0; padding: 4px; border: 1px solid #a68c77; border-radius: 5px; font-size: 11px; }
+.paquete-flecha { margin-left: auto; }
+.paquete-boton[aria-expanded="true"] .paquete-flecha { transform: rotate(180deg); }
+.paquete-opciones { margin: 6px 0 10px 12px; padding-left: 8px; border-left: 1px solid #a68c77; }
+.paquete-opciones[hidden] { display: none; }
+.sidebar .paquete-opciones a, .paquete-accion, .paquete-nota { display: block; width: 100%; padding: 10px 8px; font: inherit; font-size: 13px; line-height: 1.4; text-align: left; }
+.paquete-opciones small { display: block; color: #ddd0c6; font-size: 10px; margin-bottom: 2px; }
+.paquete-accion { border: 0; border-radius: 8px; background: transparent; color: white; cursor: pointer; }
+.paquete-accion:hover { background: #70513f; }
+.paquete-nota { color: #c9b9ac; }
+
 .cabecera {
     display: flex;
     justify-content: space-between;

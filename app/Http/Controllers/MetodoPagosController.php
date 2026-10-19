@@ -7,10 +7,13 @@ use Illuminate\Http\Request;
 
 class MetodoPagosController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $metodos = MetodoPago::all();
-        return response()->json($metodos);
+        if ($request->expectsJson()) {
+            return response()->json(MetodoPago::all());
+        }
+
+        return view('ventas.metodos-pago');
     }
 
     public function store(Request $request)

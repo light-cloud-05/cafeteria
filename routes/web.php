@@ -52,9 +52,7 @@ Route::middleware('auth')->group(function () {
         return redirect()->route('home');
     });
 
-    Route::get('/home', function () {
-        return view('welcome');
-    })->name('home');
+    Route::get('/home', [\App\Http\Controllers\InicioController::class, 'index'])->name('home');
 
     Route::post('/logout', [SessionController::class, 'destroy'])
         ->name('logout');
