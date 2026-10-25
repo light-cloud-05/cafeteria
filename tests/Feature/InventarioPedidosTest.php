@@ -383,7 +383,10 @@ class InventarioPedidosTest extends TestCase
         $user=User::first();$user->forceFill(['email'=>'empleado@example.com','nombreUsuario'=>'empleado']);
         $user->sendPasswordResetNotification('codigo-prueba');
         \Illuminate\Support\Facades\Notification::assertSentOnDemand(\App\Notifications\RecuperacionAdministrador::class,function($n,$canales,$destino){
-            return $destino->routes['mail']==='Proyectocafeteriakarma@gmail.com' && $n->email==='empleado@example.com';
+            return strcasecmp(
+                $destino->routes['mail'],
+                config('mail.recovery_admin')
+            ) === 0 && $n->email === 'empleado@example.com';
         });
     }
     public function test_pantallas_renderizan_y_permisos_se_aplican(): void
