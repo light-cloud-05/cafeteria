@@ -25,13 +25,17 @@
             ['ver_agotados', 'admin.stock.agotados', 'CU15', 'Avisos de agotados'],
             ['ver_reportes', 'admin.indexmovimiento', null, 'Historial de movimientos'],
         ]],
-        ['id' => 'pedidos', 'codigo' => 'P4', 'nombre' => 'Pedidos y Ventas', 'opciones' => [
+        ['id' => 'pedidos', 'codigo' => 'P4', 'nombre' => 'Pedidos, Ventas y Caja', 'opciones' => [
             ['registrar_pedidos', 'admin.pedido.crear', 'CU16', 'Registrar pedido'],
             ['modificar_pedidos', 'admin.indexpedido', 'CU17', 'Modificar o cancelar pedido'],
             ['cambiar_estado_pedidos', 'admin.indexpedido', 'CU18', 'Cambiar estado del pedido'],
             ['cobrar_ventas', 'admin.indexventa', 'CU19', 'Registrar venta y pago'],
             ['cobrar_ventas', 'admin.indexmetodopago', null, 'Métodos de pago'],
             ['consultar_historial_pedidos', 'admin.indexpedido', 'CU20', 'Historial de pedidos'],
+            ['consultar_caja', 'admin.caja.index', null, 'Consultar cierres'],
+            ['consultar_caja', 'admin.caja.previsualizacion', null, 'Previsualización del día'],
+            ['consultar_caja', 'admin.caja.mensual', null, 'Consolidado mensual de caja'],
+            ['consultar_caja', 'admin.caja.anual', null, 'Consolidado anual de caja'],
         ]],
         ['id' => 'reportes', 'codigo' => 'P5', 'nombre' => 'Reportes', 'opciones' => [
             ['ver_reportes', 'admin.reportes.diarias', 'CU21', 'Ventas diarias'],
@@ -61,16 +65,17 @@
                 }
                 return $opcion[0] === null || $usuarioMenu->tienePermiso($opcion[0]);
             });
-            $activo = $opciones->contains(fn ($opcion) => $opcion[1] && request()->routeIs($opcion[1]));
+            $cajaAbierta = $paquete['id'] === 'pedidos' && request()->routeIs('admin.caja.*');
+            $activo = $cajaAbierta || $opciones->contains(fn ($opcion) => $opcion[1] && request()->routeIs($opcion[1]));
         @endphp
         @if($opciones->isNotEmpty())
             <section class="menu-paquete">
-                <button type="button" @class(['paquete-boton', 'activo' => $activo]) aria-expanded="false" aria-controls="paquete-{{ $paquete['id'] }}">
+                <button type="button" @class(['paquete-boton', 'activo' => $activo]) aria-expanded="{{ $cajaAbierta ? 'true' : 'false' }}" aria-controls="paquete-{{ $paquete['id'] }}">
                     @include('partials.icono', ['nombre' => $paquete['id']])
                     <span>{{ $paquete['nombre'] }}</span>
                     @include('partials.icono', ['nombre' => 'chevron', 'clase' => 'paquete-flecha'])
                 </button>
-                <div id="paquete-{{ $paquete['id'] }}" class="paquete-opciones" hidden>
+                <div id="paquete-{{ $paquete['id'] }}" class="paquete-opciones" @if(!$cajaAbierta) hidden @endif>
                     @foreach($opciones as [$permiso, $ruta, $cu, $texto])
                         @if($ruta === 'logout')
                             <form method="POST" action="{{ route('logout') }}">@csrf<button type="submit" class="paquete-accion"><small>{{ $cu }}</small>{{ $texto }}</button></form>

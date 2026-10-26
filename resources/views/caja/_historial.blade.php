@@ -1,0 +1,7 @@
+<h2 id="historial-versiones">Historial de versiones</h2>
+<p id="ayuda-tabla-historial">Consulta cada versión conservada. Desplaza la tabla para ver todas sus columnas.</p>
+<div class="tarjeta tabla-contenedor caja-tabla" role="region" aria-label="Historial de versiones" aria-describedby="ayuda-tabla-historial" tabindex="0"><table><thead><tr><th scope="col">Versión</th><th scope="col">Registro en Bolivia</th><th scope="col">Responsable</th><th scope="col">Efectivo contado</th><th scope="col">Diferencia</th><th scope="col">Motivo</th></tr></thead><tbody>
+@forelse($versiones as $historica)<tr><td><a href="{{ route('admin.caja.version', [$cierre->id, $historica->id]) }}">Versión {{ $historica->numero_version }}</a><span class="etiqueta {{ $historica->id === $version?->id ? 'activa' : 'inactiva' }}">{{ $historica->id === $version?->id ? 'Vigente' : 'Histórica conservada' }}</span></td><td>{{ $historica->registrado_en?->format('d/m/Y H:i:s') }}</td><td>{{ $historica->responsable?->nombreCompleto ?? 'No disponible' }}</td><td class="caja-importe">{{ \App\Support\ImporteCajaVista::formatear($historica->efectivo_contado) }}</td><td class="caja-importe">{{ \App\Support\ImporteCajaVista::formatear($historica->diferencia) }}</td><td class="caja-texto">{{ $historica->motivo_correccion ?? 'Versión inicial' }}</td></tr>
+@empty<tr><td class="caja-vacio" colspan="6">Sin versiones registradas.</td></tr>@endforelse
+</tbody></table></div>
+@include('caja._paginacion', ['paginador' => $versiones, 'etiqueta' => 'Páginas del historial de versiones'])

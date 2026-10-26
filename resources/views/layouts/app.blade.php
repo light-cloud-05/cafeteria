@@ -8,6 +8,7 @@
 
     <link rel="stylesheet" href="{{ asset('css/sistema.css') }}">
     <link rel="stylesheet" href="{{ asset('css/modern.css') }}">
+    @stack('styles')
 </head>
 <body>
     <div class="estructura">
@@ -57,7 +58,13 @@
                     </div>
                 @endif
 
-                <div class="barra-pagina"><div><p class="eyebrow">KARMA / Tu cafetería</p><span class="fecha-panel">{{ now()->locale('es')->translatedFormat('l, d \d\e F') }}</span></div><button type="button" class="boton secundario boton-actualizar" onclick="window.location.reload()">@include('partials.icono', ['nombre' => 'refresh']) Actualizar</button></div>
+                <div class="barra-pagina"><div><p class="eyebrow">KARMA / Tu cafetería</p><span class="fecha-panel">{{ now()->locale('es')->translatedFormat('l, d \d\e F') }}</span></div>
+                    @if(request()->isMethod('POST') && request()->routeIs('admin.caja.confirmar', 'admin.caja.rectificar'))
+                        <a class="boton secundario boton-actualizar" href="{{ route('admin.caja.index') }}">@include('partials.icono', ['nombre' => 'refresh']) Consultar estado</a>
+                    @else
+                        <button type="button" class="boton secundario boton-actualizar" onclick="window.location.reload()">@include('partials.icono', ['nombre' => 'refresh']) Actualizar</button>
+                    @endif
+                </div>
                 @yield('contenido')
             </main>
         </div>

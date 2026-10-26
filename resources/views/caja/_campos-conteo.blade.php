@@ -1,0 +1,2 @@
+<div class="campo"><label for="efectivo-contado">Efectivo contado (Bs)</label><input id="efectivo-contado" name="efectivo_contado" type="text" inputmode="decimal" pattern="[0-9]+([.][0-9]{1,2})?" maxlength="17" value="{{ $contado }}" required aria-describedby="ayuda-efectivo"><p id="ayuda-efectivo">Usa punto para los decimales, por ejemplo 125.50. No incluyas el monto QR.</p></div>
+<div class="campo"><label for="observacion">Observación</label><textarea id="observacion" name="observacion" maxlength="4000" rows="4">{{ $observacion }}</textarea></div>

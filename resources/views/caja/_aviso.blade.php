@@ -1,0 +1,1 @@
+<div class="aviso caja-aviso" role="status"><strong>Las operaciones financieras de caja todavía no están habilitadas</strong><br>Consultas en horario de Bolivia (America/La_Paz). Este módulo permite únicamente consultas.</div>

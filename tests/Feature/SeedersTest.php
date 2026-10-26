@@ -25,21 +25,38 @@ class SeedersTest extends TestCase
 
         $this->seed(DatabaseSeeder::class);
         $this->assertSame(3, Rol::count());
-        $this->assertSame(20, Permiso::count());
+        $this->assertSame(23, Permiso::count());
+        $nombresCaja = ['consultar_caja', 'confirmar_cierre_caja', 'rectificar_cierre_caja'];
+        foreach ($nombresCaja as $nombre) {
+            $this->assertSame(1, Permiso::where('nombre', $nombre)->count());
+        }
+        foreach (Rol::all() as $rol) {
+            $this->assertSame(0, $rol->permisos()->whereIn('nombre', $nombresCaja)->count());
+        }
         $this->assertSame(['Efectivo', 'QR', 'Mixto'], MetodoPago::pluck('nombre')->all());
         $admin = Rol::where('nombre', 'Administrador')->firstOrFail();
         $this->assertTrue($admin->permisos()->where('nombre', 'gestion_usuarios')->exists());
         $admin->update(['estado' => false]);
         $admin->permisos()->detach();
         Permiso::where('nombre', 'gestion_usuarios')->update(['descripcion' => 'Personalizado']);
+        $permisoCaja = Permiso::where('nombre', 'consultar_caja')->firstOrFail();
+        $permisoCaja->update(['descripcion' => 'Descripción de caja personalizada']);
+        $cajero = Rol::where('nombre', 'Cajero')->firstOrFail();
+        $cajero->permisos()->attach($permisoCaja->id, ['fechaAsignacion' => '2026-10-01 12:00:00']);
+        $asignacionesAntes = DB::table('rol_permisos')->where('idRol', $cajero->getKey())->orderBy('id')->get()->toArray();
 
         $this->seed(DatabaseSeeder::class);
 
         $this->assertSame(3, Rol::count());
-        $this->assertSame(20, Permiso::count());
+        $this->assertSame(23, Permiso::count());
         $this->assertSame(3, MetodoPago::count());
         $this->assertFalse($admin->fresh()->estado);
         $this->assertSame(0, $admin->permisos()->count());
         $this->assertSame('Personalizado', Permiso::where('nombre', 'gestion_usuarios')->value('descripcion'));
+        $this->assertSame('Descripción de caja personalizada', $permisoCaja->fresh()->descripcion);
+        $this->assertEquals($asignacionesAntes, DB::table('rol_permisos')->where('idRol', $cajero->getKey())->orderBy('id')->get()->toArray());
+        foreach ($nombresCaja as $nombre) {
+            $this->assertSame(1, Permiso::where('nombre', $nombre)->count());
+        }
     }
 }

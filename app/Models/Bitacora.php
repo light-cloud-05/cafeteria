@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class Bitacora extends Model
 {
     use HasFactory;
+    use \App\Models\Concerns\HistorialFinanciero;
     use \App\Models\Concerns\FiltraFechaLocal;
 
     protected $table = 'bitacoras';

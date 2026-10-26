@@ -19,6 +19,28 @@ use App\Http\Controllers\VentaController;
 use App\Http\Controllers\PromocionesController;
 use App\Http\Controllers\MetodoPagosController;
 use App\Http\Controllers\BitacorasController;
+use App\Http\Controllers\CajaController;
+use App\Http\Controllers\OperacionesCajaController;
+use App\Http\Controllers\ConsolidadosCajaController;
+
+// Caja: consultas solamente, sin binding automático de modelos financieros.
+Route::middleware(['auth', 'permiso:consultar_caja'])->prefix('admin/caja')->name('admin.caja.')->group(function () {
+    Route::get('/', [CajaController::class, 'index'])->name('index');
+    Route::get('/previsualizacion', [CajaController::class, 'previsualizacion'])->name('previsualizacion');
+    Route::get('/mensual', [ConsolidadosCajaController::class, 'mensual'])->name('mensual');
+    Route::get('/anual', [ConsolidadosCajaController::class, 'anual'])->name('anual');
+    Route::get('/cierres/{cierre}', [CajaController::class, 'show'])->whereNumber('cierre')->name('show');
+    Route::get('/cierres/{cierre}/versiones/{version}', [CajaController::class, 'version'])
+        ->whereNumber('cierre')->whereNumber('version')->name('version');
+    Route::middleware('permiso:confirmar_cierre_caja')->group(function () {
+        Route::get('/confirmacion', [OperacionesCajaController::class, 'confirmacion'])->name('confirmacion');
+        Route::post('/cierres', [OperacionesCajaController::class, 'confirmar'])->name('confirmar');
+    });
+    Route::middleware('permiso:rectificar_cierre_caja')->group(function () {
+        Route::get('/cierres/{cierre}/rectificacion', [OperacionesCajaController::class, 'rectificacion'])->whereNumber('cierre')->name('rectificacion');
+        Route::post('/cierres/{cierre}/rectificaciones', [OperacionesCajaController::class, 'rectificar'])->whereNumber('cierre')->name('rectificar');
+    });
+});
 
 /*
 |--------------------------------------------------------------------------

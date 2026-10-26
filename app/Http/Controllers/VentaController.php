@@ -35,8 +35,14 @@ class VentaController extends Controller
     }
     public function store(Request $request,int $id,InventarioService $inventario)
     {
+        $autorizacion=app(\App\Services\Caja\AutorizacionCaja::class);
+        $actorPrevio=$autorizacion->cobro();
         $datos=$request->validate(['metodo_pago'=>'required|in:Efectivo,QR,Mixto','monto_recibido'=>'nullable|required_if:metodo_pago,Efectivo,Mixto|numeric|min:0|max:999999.99|decimal:0,2','monto_qr'=>'nullable|required_if:metodo_pago,Mixto|numeric|gt:0|max:999999.99|decimal:0,2','version_pedido'=>'required|string|size:64']);
-        DB::transaction(function() use($id,$datos,$request,$inventario) {
+        \App\Services\Caja\CoordinadorCobrosCaja::resolver()->exclusivo(function() use($id,$datos,$inventario,$autorizacion,$actorPrevio) {
+        DB::transaction(function() use($id,$datos,$inventario,$autorizacion,$actorPrevio) {
+            $actor=$autorizacion->revalidarCobro($actorPrevio); // Rol -> usuario -> permisos, antes de pedido o inventario.
+            $fechaCobro = \App\Services\Caja\DiaOperativoCaja::ahora();
+            \App\Services\Caja\DiaOperativoCaja::verificarAbierto($fechaCobro);
             $pedido=Pedido::lockForUpdate()->findOrFail($id);$this->pendiente($pedido);
             if (!hash_equals($pedido->versionCobro(),$datos['version_pedido'])) {
                 throw ValidationException::withMessages(['pedido'=>'El pedido cambió desde que abriste el cobro. Recarga la página y confirma el nuevo total con el cliente.']);
@@ -53,9 +59,10 @@ class VentaController extends Controller
             $recibido=$qr+$efectivo;
             if($recibido < $total) throw ValidationException::withMessages(['monto_recibido'=>'El monto recibido es menor al total.']);
             app(\App\Services\ReservaPedidoService::class)->mover($pedido);
-            Venta::create(['pedido_id'=>$pedido->id,'usuario_id'=>$request->user()->id,'fecha_hora'=>now(),'metodo_pago'=>$datos['metodo_pago'],
+            Venta::create(['pedido_id'=>$pedido->id,'usuario_id'=>$actor->getKey(),'fecha_hora'=>$fechaCobro,'metodo_pago'=>$datos['metodo_pago'],
                 'monto_qr'=>$qr/100,'monto_efectivo'=>($total-$qr)/100,'total'=>$total/100,'monto_recibido'=>$recibido/100,'cambio'=>($recibido-$total)/100,'estado'=>'Completado']);
             $pedido->update(['estado'=>'Pagado','total'=>$total/100]);
+        }, 1);
         });
         return redirect()->route('admin.pedido.ver',$id)->with('success','Venta registrada; pedido pagado y reserva de stock confirmada.');
     }

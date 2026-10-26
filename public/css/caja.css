@@ -1,0 +1,40 @@
+/* Extensiones exclusivas de caja: los componentes base siguen en sistema.css y modern.css. */
+.caja-panel { min-width: 0; display: grid; gap: 20px; }
+.caja-panel > * { min-width: 0; margin-block: 0; }
+.caja-panel .caja-navegacion { gap: 8px; }
+.caja-panel .caja-navegacion [aria-current="page"] { border-color: var(--cafe); font-weight: 700; }
+.caja-panel .caja-aviso { color: #63401d; background: #faf0dc; border-color: #d5bb8c; }
+.caja-panel .caja-filtros { max-width: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 16px; align-items: end; }
+.caja-panel .caja-filtros .campo { min-width: 0; margin: 0; }
+.caja-panel .caja-filtros input, .caja-panel .caja-filtros select { min-width: 0; max-width: 100%; }
+.caja-panel .caja-filtros .acciones { grid-column: 1 / -1; }
+.caja-panel .caja-datos { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); gap: 18px; margin: 0; }
+.caja-panel .caja-datos > div { min-width: 0; }
+.caja-panel dt { color: #6e6054; font-weight: 600; margin-bottom: 7px; }
+.caja-panel dd { margin: 0; overflow-wrap: anywhere; }
+.caja-panel .caja-importe { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.caja-panel .caja-texto { white-space: pre-wrap; overflow-wrap: anywhere; }
+.caja-panel .caja-tabla { padding: 0; max-width: 100%; }
+.caja-panel .caja-tabla:focus-visible { outline-offset: -3px; }
+.caja-panel .caja-tabla table { min-width: 700px; }
+.caja-panel .caja-listado table { min-width: 1150px; }
+.caja-panel .caja-tabla caption { padding: 16px; text-align: left; font-weight: 600; }
+.caja-panel .caja-tabla th { white-space: nowrap; }
+.caja-panel .caja-tabla td { overflow-wrap: anywhere; max-width: 320px; }
+.caja-panel .caja-tabla .caja-importe { overflow-wrap: normal; }
+.caja-panel .caja-vacio { padding: 24px; color: #6e6054; }
+.caja-panel .caja-paginacion { overflow-wrap: anywhere; }
+.caja-panel .caja-paginacion nav { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.caja-panel .caja-paginacion a, .caja-panel .caja-paginacion span { display: inline-block; padding: 9px 12px; }
+.caja-panel #historial-versiones { scroll-margin-top: 16px; }
+.caja-panel fieldset { min-width: 0; border: 0; padding: 0; margin: 0; }
+.caja-panel legend { font-weight: 600; margin-bottom: 20px; }
+@media (max-width: 700px) {
+    .caja-panel { gap: 16px; }
+    .caja-panel h1 { font-size: 24px; overflow-wrap: anywhere; }
+    .caja-panel .caja-navegacion .boton { flex: 1 1 160px; }
+    .caja-panel .caja-filtros { padding: 18px; }
+    .caja-panel .caja-datos { grid-template-columns: 1fr; }
+    .caja-panel .caja-datos .caja-importe { white-space: normal; overflow-wrap: anywhere; }
+    .caja-panel .caja-tabla th, .caja-panel .caja-tabla td { padding: 12px; }
+}

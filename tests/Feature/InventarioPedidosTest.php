@@ -11,12 +11,13 @@ class InventarioPedidosTest extends TestCase
         parent::setUp();
         config(['database.default'=>'sqlite','database.connections.sqlite.database'=>':memory:']);
         DB::purge('sqlite');
-        foreach(['categorias','productos','stocks','proveedores','usuarios','pedidos','detalle_pedidos','movimiento_inventarios','bitacoras','ventas','promociones'] as $table) {
+        foreach(['categorias','productos','stocks','proveedores','usuarios','pedidos','detalle_pedidos','movimiento_inventarios','bitacoras','ventas','promociones','cierre_cajas'] as $table) {
             Schema::create($table,function(Blueprint $t) use($table) {
                 $t->id();$t->timestamps();
+                if($table==='cierre_cajas') {$t->date('fecha_operativa')->nullable()->unique();}
                 if(in_array($table,['categorias','productos','proveedores','promociones'])) $t->string('nombre');
                 if(in_array($table,['categorias','proveedores','usuarios'])) $t->boolean('estado')->default(true);
-                if($table==='usuarios') {$t->string('nombreCompleto');$t->string('nombreUsuario')->nullable();$t->string('password')->nullable();$t->softDeletes();$t->string('session_token',64)->nullable();$t->unsignedBigInteger('session_last_activity')->nullable();}
+                if($table==='usuarios') {$t->integer('rol_id')->nullable();$t->string('nombreCompleto');$t->string('nombreUsuario')->nullable();$t->string('password')->nullable();$t->softDeletes();$t->string('session_token',64)->nullable();$t->unsignedBigInteger('session_last_activity')->nullable();}
                 if($table==='productos') {$t->decimal('precio',8,2);$t->boolean('disponible');$t->integer('categoria_id');$t->integer('proveedor_id')->nullable();}
                 if($table==='stocks') {$t->integer('producto_id')->unique();$t->decimal('stock_actual',10,2);$t->decimal('stock_minimo',10,2);$t->dateTime('fecha_actualizacion')->nullable();}
                 if($table==='pedidos') {$t->date('fecha_numero')->nullable();$t->integer('numero_diario')->nullable();$t->boolean('stock_reservado')->default(false);$t->integer('usuario_id');$t->dateTime('fechaHora');$t->decimal('total',8,2);$t->decimal('subtotal',8,2)->default(0);$t->decimal('descuento',8,2)->default(0);$t->integer('promocion_id')->nullable();$t->string('estado');}
@@ -28,9 +29,16 @@ class InventarioPedidosTest extends TestCase
             });
         }
         Schema::create('numeradores_pedidos',function(Blueprint $t){$t->date('fecha')->primary();$t->integer('ultimo')->default(0);});
+        // La autorización del cobro relee datos reales: completar el fixture, sin simular esa comprobación.
+        Schema::create('roles',function(Blueprint $t){$t->id('rol_id');$t->string('nombre');$t->boolean('estado');$t->timestamps();});
+        Schema::create('permisos',function(Blueprint $t){$t->id();$t->string('nombre')->unique();$t->timestamps();});
+        Schema::create('rol_permisos',function(Blueprint $t){$t->integer('idRol');$t->integer('idPermiso');$t->dateTime('fechaAsignacion')->nullable();$t->timestamps();});
+        DB::table('roles')->insert(['rol_id'=>1,'nombre'=>'Fixture cobro','estado'=>1]);
+        $permisoCobro=DB::table('permisos')->insertGetId(['nombre'=>'cobrar_ventas']);
+        DB::table('rol_permisos')->insert(['idRol'=>1,'idPermiso'=>$permisoCobro]);
         $user = new class extends User { public function tienePermiso(string $nombre): bool { return true; } };
         $user->forceFill(['id'=>1,'nombreCompleto'=>'Prueba','estado'=>1]);$user->exists=true;
-        DB::table('usuarios')->insert(['id'=>1,'nombreCompleto'=>'Prueba','estado'=>1]);$this->actingAs($user);
+        DB::table('usuarios')->insert(['id'=>1,'rol_id'=>1,'nombreCompleto'=>'Prueba','estado'=>1]);$this->actingAs($user);
         DB::table('categorias')->insert(['id'=>1,'nombre'=>'Bebidas','estado'=>1]);
         Producto::create(['nombre'=>'Café','precio'=>'12.35','disponible'=>true,'categoria_id'=>1]);
         Stock::create(['producto_id'=>1,'stock_actual'=>10,'stock_minimo'=>2]);
@@ -194,7 +202,7 @@ class InventarioPedidosTest extends TestCase
         $this->get('/admin/bitacora/999999')->assertNotFound();
         $this->put('/admin/bitacora/'.$evento->id,[])->assertStatus(405);
         $this->delete('/admin/bitacora/'.$evento->id)->assertStatus(405);
-        Bitacora::query()->delete();$this->get('/admin/bitacora')->assertOk()->assertSee('No hay eventos registrados');
+        DB::table('bitacoras')->delete();$this->get('/admin/bitacora')->assertOk()->assertSee('No hay eventos registrados');
         $denegado=new class extends User { public function tienePermiso(string $nombre): bool { return false; } };$denegado->forceFill(['id'=>1,'estado'=>1]);$this->actingAs($denegado);
         $this->get('/admin/bitacora')->assertForbidden();$this->get('/admin/bitacora/'.$evento->id)->assertForbidden();
     }
@@ -226,7 +234,7 @@ class InventarioPedidosTest extends TestCase
         Stock::first()->update(['stock_actual'=>1,'stock_minimo'=>0]);
         $otro=Producto::create(['nombre'=>'Alternativa','precio'=>8,'disponible'=>true,'categoria_id'=>1]);
         Stock::create(['producto_id'=>$otro->id,'stock_actual'=>10,'stock_minimo'=>0]);
-        DB::table('usuarios')->insert(['id'=>2,'nombreCompleto'=>'Cajero','estado'=>1]);
+        DB::table('usuarios')->insert(['id'=>2,'rol_id'=>1,'nombreCompleto'=>'Cajero','estado'=>1]);
         $cajero=new class extends User { public function tienePermiso(string $nombre): bool { return $nombre === 'cobrar_ventas'; } };
         $cajero->forceFill(['id'=>2,'nombreCompleto'=>'Cajero','estado'=>1]);$cajero->exists=true;$this->actingAs($cajero);
         $this->get('/admin/ventas/cobrar/'.$pedido->id)->assertOk()->assertSee('Corregir pedido')->assertDontSee('sin disponibilidad suficiente');

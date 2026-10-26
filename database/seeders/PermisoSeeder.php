@@ -33,6 +33,9 @@ class PermisoSeeder extends Seeder
             'ver_reportes' => 'Consultar reportes de ventas e inventario',
             'gestion_promociones' => 'Administrar promociones y descuentos',
             'consultar_bitacora' => 'Consultar la bitácora del sistema',
+            'consultar_caja' => 'Consultar cierres de caja y su historial financiero',
+            'confirmar_cierre_caja' => 'Confirmar el cierre diario de caja',
+            'rectificar_cierre_caja' => 'Autorizar rectificaciones versionadas de cierres de caja',
         ];
 
         foreach ($permisos as $nombre => $descripcion) {
