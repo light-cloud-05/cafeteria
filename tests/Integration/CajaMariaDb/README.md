@@ -1,4 +1,4 @@
-# Integración real de caja en MariaDB 10.4.32
+# Integración real de caja en MariaDB 10.4.32 y 10.11.14
 
 Estado: preparada, **no ejecutada en MariaDB por Codex**. No habilita cierres de producción.
 Última referencia aportada por el operador: 33/33 ejecuciones PASS de los once escenarios, posteriores
@@ -12,7 +12,10 @@ El ejecutor es un CLI PHP independiente; no necesita pcntl, servidores HTTP ni r
 - Única base admitida, sin parámetros alternativos: `cafeteria_caja_integracion`.
 - Nunca se utilizan credenciales de `.env`, ni `cafeteria_pro` ni `cafeteria_pro_pruebas`.
 - Cuenta requerida: `karma_caja_it`, local y con permisos exclusivamente en esa base.
-- `SELECT DATABASE()`, `VERSION()` y `CONNECTION_ID()` se comprueban antes de cargar Laravel.
+- `SELECT DATABASE()`, `VERSION()`, `CONNECTION_ID()` y `CURRENT_USER()` se comprueban antes de cargar Laravel.
+- La cuenta autenticada debe ser exactamente `karma_caja_it@localhost`, `karma_caja_it@127.0.0.1`
+  o `karma_caja_it@::1`. Se rechazan cuentas anónimas, administrativas, remotas o con host `%`,
+  aunque el usuario configurado sea correcto. No se publica esa identidad ni la contraseña.
 - Un hook repite la comprobación real antes de cada sentencia Laravel, incluido cada INSERT y DDL.
 - Se bloquean `USE`, `DROP`, `TRUNCATE`, consultas a los nombres protegidos y reconexiones.
 - `--prepare` exige cero tablas/vistas y se niega a reutilizar una base poblada. No usa seeders ni migrate:fresh.
@@ -25,7 +28,7 @@ El ejecutor es un CLI PHP independiente; no necesita pcntl, servidores HTTP ni r
 ## Requisitos
 
 1. PHP `C:\php83\php.exe` (8.3.36 recomendado), dependencias vendor instaladas, pdo_mysql y proc_open habilitados.
-2. MariaDB **10.4.32** local, por ejemplo `127.0.0.1:3308`. Otra versión detiene la certificación.
+2. MariaDB **10.4.32** o **10.11.14** local, por ejemplo `127.0.0.1:3308`, coincidente con la selección esperada.
 3. Cuenta dedicada con SELECT, INSERT, UPDATE, DELETE, CREATE, ALTER, INDEX y REFERENCES solo en la base desechable.
 4. Debe poder observar sus propias sesiones en information_schema.PROCESSLIST. No se concede PROCESS global
    automáticamente. Si una política oculta STATE, la suite falla; no reemplaza la evidencia por una espera fija.
@@ -34,6 +37,39 @@ El ejecutor es un CLI PHP independiente; no necesita pcntl, servidores HTTP ni r
 6. Permiso para crear archivos temporales y dos procesos PHP hijos. No ejecutarlo desde PHPUnit ordinario.
 
 ## Preparación manual, una sola vez
+
+### Selección de versión para cualquier comando con conexión
+
+Configurar en la misma sesión de PowerShell, antes de `--prepare` o de ejecutar casos:
+
+```powershell
+$env:KARMA_CAJA_EXPECTED_VERSION = '10.11.14'
+# Para conservar la línea base explícita, usar en su lugar:
+# $env:KARMA_CAJA_EXPECTED_VERSION = '10.4.32'
+```
+
+Solo se aceptan esos dos valores exactos. Un valor vacío, con espacios o desconocido se rechaza
+antes de abrir una conexión. Si la variable está **ausente**, se conserva el comportamiento anterior:
+se exige **10.4.32**, nunca se detecta automáticamente ni se acepta 10.11.14 por omisión.
+La versión real debe identificar MariaDB y coincidir exactamente con el parche seleccionado;
+se admiten el prefijo de compatibilidad `5.5.5-` y los sufijos de distribución.
+No cambiar la selección durante una ejecución. Los workers heredan el entorno y reciben también
+la selección en su tarea; rechazan discrepancias antes de conectar. El hook conserva la versión
+esperada inicial para comprobar cada sentencia, además de base e identidad autenticada.
+
+El reporte incluye `version_esperada` y `version_real` del padre (también conserva `servidor`);
+cada caso concurrente incluye `workers` con sesión, versión esperada y real de ambos hijos.
+Si falla la validación inicial, no se afirma una versión real verificada: el error es sanitizado.
+Esta adaptación no se ha ejecutado contra ninguna de las dos versiones de MariaDB.
+
+Un **PASS no habilita cierres**, no certifica la capacidad del servidor (carga, recursos o concurrencia
+de producción), ni demuestra revocación de permisos durante una espera real `User lock`.
+Los escenarios existentes conservan su alcance; seleccionar 10.11.14 no agrega esas certificaciones.
+
+Verificación sin MariaDB de esta adaptación (PHP 8.3.36):
+`php vendor/phpunit/phpunit/phpunit --filter 'CajaIntegracionGuardTest|CajaMariaDbConsolidadosFixturesTest'`:
+15 pruebas aprobadas, 164 aserciones. PDO se simula en las pruebas del guard; los fixtures usan SQLite
+en memoria. Se comprobó también sintaxis de los PHP del arnés y `run.php --help`, sin conexión.
 
 Los siguientes pasos son para una ejecución posterior por el operador. Codex no los ejecutó.
 
@@ -283,7 +319,7 @@ No se modifica el gate, servicios financieros, rutas ni arquitectura P1–P6.
 **Estos comandos son para el operador; Codex no los ejecutó contra MariaDB.**
 Usar únicamente cafeteria_caja_integracion ya preparada y la cuenta karma_caja_it restringida
 a esa base. Requisitos y permisos son los de las secciones anteriores: PHP 8.3, pdo_mysql,
-proc_open, MariaDB 10.4.32 y observación de sesiones propias en PROCESSLIST. No usar root.
+proc_open, MariaDB 10.4.32 o 10.11.14 con selección coincidente y observación de sesiones propias en PROCESSLIST. No usar root.
 Si falta la base o su marca, detenerse y revisar la preparación manual; no reiniciar una base existente.
 Si hay configuración Laravel cacheada, detenerse; el arnés no la borra ni cambia .env.
 

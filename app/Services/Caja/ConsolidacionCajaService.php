@@ -72,9 +72,13 @@ final class ConsolidacionCajaService
                     ->whereColumn('nueva.numero_version', '>', 'v.numero_version');
             })->select('c.id as cierre_id', 'c.fecha_operativa', 'v.id as version_id', 'v.numero_version')
             ->selectSub(DB::table('cierre_caja_version_ventas as d')->selectRaw('COUNT(*)')->whereColumn('d.cierre_caja_version_id', 'v.id'), 'cantidad_ventas');
-        foreach (array_slice(TotalesCajaPeriodo::CAMPOS, 0, 5) as $campo) $consulta->selectRaw('CAST(v.'.$campo.' AS CHAR) AS '.$campo);
+        $consulta->selectSub(DB::table('cierre_caja_version_ventas as sim')->selectRaw('COUNT(*)')
+            ->whereColumn('sim.cierre_caja_version_id','v.id')->where(fn ($q) => $q->where('sim.origen','SIMULACION_LOCAL')
+                ->orWhereIn('sim.metodo_pago',['QR_SIMULADO','TARJETA_SIMULADA'])), 'ventas_simuladas');
+        foreach (array_merge(array_slice(TotalesCajaPeriodo::CAMPOS, 0, 5), ['tarjeta_registrado']) as $campo) $consulta->selectRaw('CAST(v.'.$campo.' AS CHAR) AS '.$campo);
         $filas = [];
         foreach ($consulta->orderBy('c.fecha_operativa')->get() as $fila) {
+            if ((int)$fila->ventas_simuladas > 0) \App\Services\Pagos\ContextoLecturaPagos::exigirDemostracion();
             // SQLite representa la columna generada con afinidad REAL. Normalizar su texto con
             // BigDecimal igual que el cast decimal:2 de Eloquent; MariaDB ya devuelve DECIMAL exacto.
             if (DB::connection()->getDriverName() === 'sqlite' && $fila->diferencia !== null) {

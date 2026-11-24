@@ -44,6 +44,7 @@ final class CajaController extends Controller
             if (!empty($filtros['hasta'])) $consulta->where('fecha_operativa', '<=', $filtros['hasta']);
             $cierres = $consulta->orderByDesc('fecha_operativa')->orderByDesc('id')
                 ->paginate((int) ($filtros['por_pagina'] ?? 20))->appends($filtros);
+            \App\Services\Pagos\ContextoLecturaPagos::verificarCierres($cierres->pluck('id')->all());
 
             return view('caja.index', compact('cierres', 'filtros', 'tipo'));
         });
@@ -76,6 +77,7 @@ final class CajaController extends Controller
             $this->autorizacion->consulta();
             $this->paginas($request);
             $cierre = CierreCaja::with(['usuario', 'versionVigente.responsable'])->findOrFail($cierre);
+            \App\Services\Pagos\ContextoLecturaPagos::verificarCierres([$cierre->id]);
             $version = $cierre->versionVigente;
             $detalles = $version?->detalles()->orderBy('venta_id')->paginate(20, ['*'], 'ventas_page');
             $versiones = $cierre->versiones()->with('responsable')->orderByDesc('numero_version')
@@ -93,6 +95,7 @@ final class CajaController extends Controller
             $this->autorizacion->consulta();
             $this->paginas($request);
             $cierre = CierreCaja::with('versionVigente')->findOrFail($cierre);
+            \App\Services\Pagos\ContextoLecturaPagos::verificarCierres([$cierre->id]);
             $version = $cierre->versiones()->with('responsable')->whereKey($version)->firstOrFail();
             $detalles = $version->detalles()->orderBy('venta_id')->paginate(20, ['*'], 'ventas_page');
 

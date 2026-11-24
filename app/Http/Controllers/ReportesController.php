@@ -7,9 +7,8 @@ class ReportesController extends Controller
     public function diarias(Request $request)
     {
         $datos=$request->validate(['fecha'=>'nullable|date_format:Y-m-d']);$fecha=$datos['fecha'] ?? now()->toDateString();
-        $ventas=Venta::with('usuario')->enFecha('fecha_hora',$fecha)->where('estado','Completado')->orderBy('fecha_hora')->get();
-        $total=$ventas->sum('total');$cantidad=$ventas->pluck('pedido_id')->unique()->count();
-        return view('reportes.diarias',compact('ventas','total','cantidad','fecha'));
+        $ventas=Venta::with(['usuario','pedido'])->enFecha('fecha_hora',$fecha)->where('estado','Completado')->orderBy('fecha_hora')->get();
+        return $this->reporte('diarias',$ventas,compact('fecha'));
     }
     private function rango(Request $request): array
     {
@@ -21,13 +20,18 @@ class ReportesController extends Controller
     public function pagos(Request $request)
     {
         [$desde,$hasta]=$this->rango($request);
-        $ventas=Venta::entreFechas('fecha_hora',$desde,$hasta)->where('estado','Completado')->get();
-        $resumen=collect();
-        foreach($ventas as $venta) foreach(['QR'=>(float)$venta->monto_qr,'Efectivo'=>(float)$venta->monto_efectivo] as $metodo=>$monto) {
-            if($monto<=0) continue;
-            $fila=$resumen->get($metodo,['cantidad'=>0,'total'=>0]);$fila['cantidad']++;$fila['total']+=$monto;$resumen->put($metodo,$fila);
+        $ventas=Venta::with('pedido')->entreFechas('fecha_hora',$desde,$hasta)->where('estado','Completado')->orderBy('fecha_hora')->get();
+        return $this->reporte('pagos',$ventas,compact('desde','hasta'));
+    }
+    private function reporte(string $vista, $ventas, array $filtros)
+    {
+        try { $calculo=app(\App\Services\Reportes\VentasReporteService::class)->resumir($ventas); }
+        catch (\UnexpectedValueException) {
+            return response()->view('reportes.error',[],422)->header('Cache-Control','private, no-store');
         }
-        return view('reportes.pagos',compact('resumen','desde','hasta'));
+        $total=$calculo['totales']['total'];$cantidad=$ventas->count();
+        return response()->view('reportes.'.$vista,$filtros+$calculo+compact('ventas','total','cantidad'))
+            ->header('Cache-Control','private, no-store');
     }
     public function inventario(Request $request)
     {

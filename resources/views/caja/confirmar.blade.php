@@ -9,7 +9,7 @@
 <div class="acciones"><button class="boton secundario" type="submit">Consultar fecha</button></div>
 </form>
 <p>Fecha operativa de Bolivia: {{ $fecha }}. El responsable se obtiene de tu sesión. Los importes se recalculan al confirmar.</p>
-<div class="tarjeta"><dl class="caja-datos">@foreach(['total_ventas'=>'Total vendido','efectivo_esperado'=>'Efectivo esperado','qr_registrado'=>'QR registrado'] as $campo=>$etiqueta)<div><dt>{{ $etiqueta }}</dt><dd class="caja-importe">{{ \App\Support\ImporteCajaVista::formatear($resumen[$campo]) }}</dd></div>@endforeach</dl></div>
+<div class="tarjeta"><dl class="caja-datos">@foreach(['total_ventas'=>'Total vendido','efectivo_esperado'=>'Efectivo esperado','qr_registrado'=>'QR registrado','tarjeta_registrado'=>'Tarjeta registrada'] as $campo=>$etiqueta)<div><dt>{{ $etiqueta }}</dt><dd class="caja-importe">{{ \App\Support\ImporteCajaVista::formatear($resumen[$campo]) }}</dd></div>@endforeach</dl></div>
 <form method="POST" action="{{ route('admin.caja.confirmar') }}" class="tarjeta formulario">
 @csrf
 <input type="hidden" name="fecha" value="{{ $fecha }}">

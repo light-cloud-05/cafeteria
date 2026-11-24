@@ -12,7 +12,7 @@
 @if($errorFinanciero)<div class="aviso error" role="alert">{{ $errorFinanciero }}</div>
 @elseif($resumen)
 <div class="tarjeta"><dl class="caja-datos"><div><dt>Cantidad de ventas completadas</dt><dd>{{ $resumen['cantidad_ventas'] }}</dd></div>
-@foreach(['total_ventas'=>'Total vendido','efectivo_esperado'=>'Efectivo esperado','qr_registrado'=>'QR registrado'] as $campo=>$titulo)<div><dt>{{ $titulo }}</dt><dd class="caja-importe">{{ \App\Support\ImporteCajaVista::formatear($resumen[$campo]) }}</dd></div>@endforeach
+@foreach(['total_ventas'=>'Total vendido','efectivo_esperado'=>'Efectivo esperado','qr_registrado'=>'QR registrado','tarjeta_registrado'=>'Tarjeta registrada'] as $campo=>$titulo)<div><dt>{{ $titulo }}</dt><dd class="caja-importe">{{ \App\Support\ImporteCajaVista::formatear($resumen[$campo]) }}</dd></div>@endforeach
 </dl>@if($resumen['cantidad_ventas'] === 0)<p>Sin ventas completadas para esta fecha.</p>@endif</div>
 @endif
 <a class="boton secundario" href="{{ route('admin.caja.index') }}">Volver a caja</a>

@@ -114,7 +114,7 @@ class CierreDiarioServiceTest extends TestCase
         $servicio = $this->servicio();
         $resumen = $servicio->previsualizar('2026-10-06');
         $this->assertSame(['fecha_operativa' => '2026-10-06', 'cantidad_ventas' => 3,
-            'total_ventas' => '54.70', 'efectivo_esperado' => '24.70', 'qr_registrado' => '30.00'], $resumen);
+            'total_ventas' => '54.70', 'efectivo_esperado' => '24.70', 'qr_registrado' => '30.00', 'tarjeta_registrado' => '0.00'], $resumen);
         $antes = [];
         foreach (['pedidos', 'ventas', 'productos', 'stocks', 'movimiento_inventarios'] as $tabla) {
             $antes[$tabla] = DB::table($tabla)->get()->toJson();

@@ -19,6 +19,7 @@ const CASOS_CAJA = Catalogo::CONCURRENCIA; // Compatibilidad: --case=all sigue s
 
 function ayudaCaja(): void
 {
+    echo "KARMA_CAJA_EXPECTED_VERSION: 10.4.32 o 10.11.14; ausente exige 10.4.32.\n";
     echo "Uso (no conecta con --help):\n  php run.php --prepare\n  php run.php --suite=concurrencia --case=all --repeat=3\n  php run.php --suite=consolidados --case=all --repeat=3\n  php run.php --suite=ampliada --case=all --repeat=3\n  Sin --suite se conserva concurrencia (11 casos).\n  Concurrencia: ".implode('|', CASOS_CAJA)."\n  Consolidados: ".implode('|', Catalogo::CONSOLIDADOS)."\n";
 }
 
@@ -53,6 +54,7 @@ function prepararCaja(): void
 
 function iniciarWorkerCaja(string $dir, array $tarea): array
 {
+    $tarea['version_esperada'] = Guard::versionEsperada();
     Runtime::senal($dir, $tarea['worker'].'-task', $tarea);
     $proceso = proc_open([PHP_BINARY, __DIR__.'/worker.php', $dir, $tarea['worker']], [
         0 => ['pipe', 'r'], 1 => ['file', $dir.'/'.$tarea['worker'].'.stdout', 'a'],
@@ -230,6 +232,9 @@ function ejecutarCasoCaja(string $caso, string $raiz, string $huella, int $sesio
         Runtime::esperar($dir, 'A-held');
         $procesos[] = iniciarWorkerCaja($dir, $b);
         $metaB = Runtime::esperar($dir, 'B-ready');
+        foreach ([$metaA, $metaB] as $metaWorker) {
+            Runtime::comprobar($metaWorker['version_esperada'] === Guard::versionEsperada(), 'Worker con versión esperada diferente.');
+        }
         Runtime::comprobar(count(array_unique([$sesionPrincipal, $metaA['sesion'], $metaB['sesion']])) === 3, 'No hay tres sesiones independientes.');
         Runtime::esperar($dir, 'B-attempt');
         observarEsperaCaja((int) $metaB['sesion'], $dir);
@@ -280,7 +285,8 @@ function ejecutarCasoCaja(string $caso, string $raiz, string $huella, int $sesio
             'El cobro que esperó medianoche fue asignado al día cerrado.');
     }
 
-    return ['caso' => $caso, 'estado' => 'PASS', 'espera_real_observada' => true, 'sesiones_independientes' => 3] + $resumen;
+    return ['caso' => $caso, 'estado' => 'PASS', 'espera_real_observada' => true, 'sesiones_independientes' => 3,
+        'workers' => [$metaA, $metaB]] + $resumen;
 }
 
 $opciones = getopt('', ['help', 'prepare', 'suite:', 'case:', 'repeat:']);
@@ -300,7 +306,9 @@ try {
         || !ctype_digit($repetir) || (int) $repetir < 1 || (int) $repetir > 20) {
         throw new RuntimeException('Argumentos inválidos; usar --help.');
     }
+    $reporte['version_esperada'] = Guard::versionEsperada();
     [$app, $conexion, $meta] = Guard::boot();
+    $reporte['version_real'] = $meta['version_servidor'];
     require __DIR__.'/Runtime.php';
     require __DIR__.'/Consolidados.php';
     $pdoRunner = $conexion->getPdo();

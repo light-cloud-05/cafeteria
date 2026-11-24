@@ -32,7 +32,7 @@ class CajaEsquemaTest extends TestCase
 
         // Ejecutar el esquema histórico real, sin seeders ni migrate:fresh.
         foreach (glob(database_path('migrations/*.php')) as $archivo) {
-            if (basename($archivo) !== self::MIGRACION) {
+            if (basename($archivo) < self::MIGRACION) {
                 (require $archivo)->up();
             }
         }
@@ -59,6 +59,9 @@ class CajaEsquemaTest extends TestCase
             ['id' => 2, 'idUsuario' => 1, 'fechaInicio' => '2026-10-06 08:00:00', 'totalSistema' => '15.00'],
         ]);
         $this->migracion()->up();
+        foreach (glob(database_path('migrations/*.php')) as $archivo) {
+            if (basename($archivo) > self::MIGRACION) (require $archivo)->up();
+        }
     }
 
     private function migracion()

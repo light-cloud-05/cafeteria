@@ -1,6 +1,7 @@
 @extends('layouts.app')
 @section('titulo', 'Inicio')
 @section('contenido')
+@if($simulacionVentas ?? false)@include('pagos._aviso')@endif
 <section class="hero-inicio">
     <div class="hero-texto">
         <span class="hero-etiqueta">Tu día, en equilibrio</span>

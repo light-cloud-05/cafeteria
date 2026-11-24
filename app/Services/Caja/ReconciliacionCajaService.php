@@ -51,6 +51,7 @@ final class ReconciliacionCajaService
             ->get(['id','idRegistroAfectado','accion','idUsuario','valoresNuevos']);
         $revision = $versiones->isEmpty() || $fecha >= DiaOperativoCaja::ahora()->toDateString(); $objetivo = null;
         foreach ($versiones as $indice => $version) {
+            \App\Services\Pagos\ContextoLecturaPagos::verificar($version->detalles);
             $accion = $version->numero_version === 1 ? 'CIERRE_CAJA' : 'RECTIFICACION_CAJA';
             $confirmaciones = $eventos->filter(fn ($evento) => (int)$evento->idRegistroAfectado === $version->id && $evento->accion === $accion);
             $evento = $confirmaciones->count() === 1 ? $confirmaciones->first() : null;
@@ -62,14 +63,14 @@ final class ReconciliacionCajaService
                 && ($meta['fecha_operativa'] ?? null) === $fecha
                 && ($version->numero_version === 1 || ($operacion !== null && ($meta['resultado'] ?? null) === 'CONFIRMADA'
                     && ($meta['evento_id'] ?? null) === $operacion.':confirmada'));
-            foreach (['total_ventas','efectivo_esperado','qr_registrado','efectivo_contado','diferencia'] as $campo) {
-                $coherente = $coherente && ($meta[$campo] ?? null) === $version->{$campo};
+            foreach (['total_ventas','efectivo_esperado','qr_registrado','efectivo_contado','diferencia','tarjeta_registrado'] as $campo) {
+                $coherente = $coherente && ($meta[$campo] ?? ($campo === 'tarjeta_registrado' ? '0.00' : null)) === $version->{$campo};
             }
             $revision = $revision || !$coherente;
             $fila = ['version_id' => $version->id, 'numero_version' => $version->numero_version,
                 'responsable_id' => $version->responsable_id, 'total_ventas' => $version->total_ventas,
                 'efectivo_esperado' => $version->efectivo_esperado, 'qr_registrado' => $version->qr_registrado,
-                'efectivo_contado' => $version->efectivo_contado, 'diferencia' => $version->diferencia,
+                'tarjeta_registrado' => $version->tarjeta_registrado, 'efectivo_contado' => $version->efectivo_contado, 'diferencia' => $version->diferencia,
                 'instantaneas' => $version->detalles->count(), 'eventos_confirmados' => $confirmaciones->count(),
                 'evento_confirmado_id' => $evento?->id, 'operacion_id' => $operacion, 'coherente' => (bool)$coherente];
             $resultado['versiones'][] = $fila;
@@ -86,18 +87,20 @@ final class ReconciliacionCajaService
     private function coherente($version, string $fecha): bool
     {
         try {
-            $total = $cash = $qr = 0; $ids = [];
+            $total = $cash = $qr = $tarjeta = 0; $ids = [];
             foreach ($version->detalles as $detalle) {
                 $t = ImporteCaja::centavos($detalle->total); $e = ImporteCaja::centavos($detalle->monto_efectivo); $q = ImporteCaja::centavos($detalle->monto_qr);
+                $card = ImporteCaja::centavos($detalle->monto_tarjeta);
+                if ($detalle->origen === 'SIMULACION_LOCAL') app(\App\Services\Pagos\AislamientoPagosSimulados::class)->verificar();
                 $cobro = CarbonImmutable::createFromFormat('!Y-m-d H:i:s', $detalle->getRawOriginal('fecha_cobro'), 'UTC');
                 if (!$cobro || $cobro->format('Y-m-d H:i:s') !== $detalle->getRawOriginal('fecha_cobro')
                     || $cobro->setTimezone(DiaOperativoCaja::ZONA)->toDateString() !== $fecha
-                    || $t !== ImporteCaja::sumar($e, $q) || isset($ids[$detalle->venta_id])) return false;
+                    || $t !== ImporteCaja::sumar(ImporteCaja::sumar($e, $q), $card) || isset($ids[$detalle->venta_id])) return false;
                 $ids[$detalle->venta_id] = true;
-                $total = ImporteCaja::sumar($total, $t); $cash = ImporteCaja::sumar($cash, $e); $qr = ImporteCaja::sumar($qr, $q);
+                $total = ImporteCaja::sumar($total, $t); $cash = ImporteCaja::sumar($cash, $e); $qr = ImporteCaja::sumar($qr, $q); $tarjeta = ImporteCaja::sumar($tarjeta, $card);
             }
             return ImporteCaja::decimal($total) === $version->total_ventas && ImporteCaja::decimal($cash) === $version->efectivo_esperado
-                && ImporteCaja::decimal($qr) === $version->qr_registrado
+                && ImporteCaja::decimal($qr) === $version->qr_registrado && ImporteCaja::decimal($tarjeta) === $version->tarjeta_registrado
                 && ImporteCaja::decimal(ImporteCaja::centavos($version->efectivo_contado) - $cash) === $version->diferencia;
         } catch (Throwable) { return false; }
     }

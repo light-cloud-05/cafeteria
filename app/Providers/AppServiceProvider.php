@@ -11,7 +11,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(\App\Services\Caja\AislamientoCajaDemo::class);
+        if (\App\Services\Caja\AislamientoCajaDemo::solicitada()) {
+            $this->app->bind(\App\Services\Caja\CoordinacionCobrosCaja::class,
+                \App\Services\Caja\CoordinacionCajaDemostracion::class);
+        }
     }
 
     /**
@@ -19,6 +23,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        if (\App\Services\Caja\AislamientoCajaDemo::solicitada()) {
+            // Antes de controladores, sesiones y cualquier preparador de datos.
+            app(\App\Services\Caja\AislamientoCajaDemo::class)->vigilar();
+        }
         foreach ([\App\Models\User::class, \App\Models\Rol::class,
             \App\Models\Categoria::class, \App\Models\Producto::class,
             \App\Models\Proveedor::class, \App\Models\Promocion::class,

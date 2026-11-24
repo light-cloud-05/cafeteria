@@ -36,19 +36,40 @@ final class Guard
         return hash('sha256', implode('', array_map(static fn ($p) => substr($p, strlen($root)).hash_file('sha256', $p), $archivos)));
     }
 
-    public static function verificar(PDO $pdo): array
+    public static function versionEsperada(): string
     {
-        $meta = $pdo->query('SELECT DATABASE() AS base_actual, VERSION() AS version_servidor, CONNECTION_ID() AS sesion')->fetch(PDO::FETCH_ASSOC);
-        self::validarNombre((string) ($meta['base_actual'] ?? ''));
-        if (!preg_match('/(?:^|-)10\.4\.32-MariaDB(?:-|$)/', (string) $meta['version_servidor'])) {
-            throw new RuntimeException('STOP: esta certificación exige MariaDB 10.4.32.');
+        $version = getenv('KARMA_CAJA_EXPECTED_VERSION');
+        return self::validarVersionEsperada($version === false ? '10.4.32' : $version);
+    }
+
+    public static function validarVersionEsperada(string $version): string
+    {
+        if (!in_array($version, ['10.4.32', '10.11.14'], true)) {
+            throw new RuntimeException('STOP: KARMA_CAJA_EXPECTED_VERSION solo admite 10.4.32 o 10.11.14.');
         }
+        return $version;
+    }
+
+    public static function verificar(PDO $pdo, ?string $esperada = null): array
+    {
+        $esperada = self::validarVersionEsperada($esperada ?? self::versionEsperada());
+        $meta = $pdo->query('SELECT DATABASE() AS base_actual, VERSION() AS version_servidor, CONNECTION_ID() AS sesion, CURRENT_USER() AS cuenta_autenticada')->fetch(PDO::FETCH_ASSOC);
+        self::validarNombre((string) ($meta['base_actual'] ?? ''));
+        if (!preg_match('/(?:^|-)'.preg_quote($esperada, '/').'-MariaDB(?:-|$)/', (string) ($meta['version_servidor'] ?? ''))) {
+            throw new RuntimeException('STOP: la versión real no coincide con la versión MariaDB esperada.');
+        }
+        if (!in_array($meta['cuenta_autenticada'] ?? '', ['karma_caja_it@127.0.0.1', 'karma_caja_it@localhost', 'karma_caja_it@::1'], true)) {
+            throw new RuntimeException('STOP: la cuenta autenticada no es la cuenta dedicada local permitida.');
+        }
+        unset($meta['cuenta_autenticada']); // No publicar identidades autenticadas en las evidencias.
+        $meta['version_esperada'] = $esperada;
 
         return $meta;
     }
 
     public static function boot(): array
     {
+        $esperada = self::versionEsperada(); // Rechazar configuración desconocida antes de conectar.
         $root = dirname(__DIR__, 3);
         if (getenv('KARMA_CAJA_ALLOW') !== self::BASE) {
             throw new RuntimeException('STOP: falta la aceptación explícita KARMA_CAJA_ALLOW.');
@@ -75,7 +96,7 @@ final class Guard
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_PERSISTENT => false,
             PDO::ATTR_EMULATE_PREPARES => false,
         ]);
-        $meta = self::verificar($pdo); // Consulta real ANTES de cargar Laravel y antes de escribir.
+        $meta = self::verificar($pdo, $esperada); // Consulta real ANTES de cargar Laravel y antes de escribir.
         $pdo->exec("SET SESSION sql_mode = 'STRICT_TRANS_TABLES,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION'");
         foreach ([
             'APP_ENV' => 'testing', 'APP_DEBUG' => 'false', 'APP_CONFIG_CACHE' => $cacheInexistente,
@@ -100,7 +121,7 @@ final class Guard
             $app['config']->set('app.timezone', 'America/La_Paz');
         });
         $conexion = new \Illuminate\Database\MySqlConnection($pdo, self::BASE, '', $config);
-        $conexion->beforeExecuting(static function (string $sql, array $bindings, $c) {
+        $conexion->beforeExecuting(static function (string $sql, array $bindings, $c) use ($esperada) {
             if (preg_match('/\b(?:cafeteria_pro|cafeteria_pro_pruebas)\b/i', $sql)
                 || preg_match('/^\s*(?:DROP|TRUNCATE|USE)\b/i', $sql)) {
                 throw new RuntimeException('STOP: SQL prohibido por el arnés de integración.');
@@ -109,7 +130,7 @@ final class Guard
             if (!$actual instanceof PDO) {
                 throw new RuntimeException('STOP: sesión no verificada; no se permite reconectar.');
             }
-            self::verificar($actual); // Antes de CADA sentencia, incluidas todas las escrituras y DDL.
+            self::verificar($actual, $esperada); // Antes de CADA sentencia, incluidas todas las escrituras y DDL.
         });
         $app->beforeBootstrapping(\Illuminate\Foundation\Bootstrap\BootProviders::class, function ($app) use ($conexion) {
             $app['db']->extend('caja_integracion', static fn () => $conexion);
@@ -117,7 +138,7 @@ final class Guard
         $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
         $conexion = $app['db']->connection();
         $conexion->setReconnector(static fn () => throw new RuntimeException('STOP: no se permite reconectar durante estas pruebas.'));
-        self::verificar($conexion->getPdo());
+        self::verificar($conexion->getPdo(), $esperada);
 
         return [$app, $conexion, $meta];
     }

@@ -116,7 +116,7 @@ final class AuditoriaFinancieraCaja
     private function resumenPermitido(array $datos): array
     {
         return array_intersect_key($datos, array_flip(['version_id', 'numero_version', 'responsable_id',
-            'total_ventas', 'efectivo_esperado', 'qr_registrado', 'efectivo_contado', 'diferencia',
+            'total_ventas', 'efectivo_esperado', 'qr_registrado', 'tarjeta_registrado', 'efectivo_contado', 'diferencia',
             'cantidad_ventas', 'observacion_modificada']));
     }
 

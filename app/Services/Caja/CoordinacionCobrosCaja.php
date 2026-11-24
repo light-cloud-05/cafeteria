@@ -18,6 +18,6 @@ interface CoordinacionCobrosCaja
 {
     public function exclusivo(Closure $operacion): mixed;
 
-    /** Solo true después de certificar el protocolo entre procesos reales. */
+    /** Producción: solo tras certificar el protocolo. Excepción explícita: demo aislada con datos ficticios. */
     public function permiteCierreDefinitivo(): bool;
 }

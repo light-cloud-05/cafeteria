@@ -11,6 +11,9 @@ final class DisponibilidadCajaWeb
 {
     public function habilitada(): bool
     {
+        if (\App\Services\Caja\AislamientoCajaDemo::solicitada()) {
+            return CoordinadorCobrosCaja::resolver()->permiteCierreDefinitivo();
+        }
         if ((new CoordinadorCobrosCaja)->permiteCierreDefinitivo()) return true;
         // No existe interruptor HTTP, de sesión o de entorno que habilite producción.
         if (PHP_SAPI !== 'cli' || !defined('PHPUNIT_COMPOSER_INSTALL')

@@ -12,6 +12,7 @@ class PedidoController extends Controller
         $datos=$request->validate(['fecha'=>'nullable|date_format:Y-m-d','estado'=>'nullable|in:Registrado,Pagado,Completado,Cancelado']);
         $pedidos=Pedido::with('usuario')->when($request->filled('fecha'),fn($q)=>$q->enFecha('fechaHora',$datos['fecha']))
             ->when($request->filled('estado'),fn($q)=>$q->where('estado',$datos['estado']))->latest('fechaHora')->paginate(25)->withQueryString();
+        \App\Services\Pagos\ContextoLecturaPagos::verificar(\App\Models\Venta::whereIn('pedido_id',$pedidos->pluck('id'))->get());
         return view('pedidos.index',compact('pedidos'));
     }
     private function formulario(Pedido $pedido)
@@ -46,6 +47,7 @@ class PedidoController extends Controller
     }
     private function editable(Pedido $pedido): void
     {
+        \App\Services\Pagos\BloqueoPagoPedido::verificar($pedido);
         if($pedido->estado !== 'Registrado' || $pedido->venta()->exists()) throw ValidationException::withMessages(['pedido'=>'Solo se puede modificar o cancelar un pedido registrado y sin cobrar.']);
     }
     public function edit(int $id)
@@ -85,6 +87,7 @@ class PedidoController extends Controller
     {
         abort_unless(collect(['registrar_pedidos','modificar_pedidos','cambiar_estado_pedidos','consultar_historial_pedidos','cobrar_ventas'])->contains(fn($p)=>auth()->user()->tienePermiso($p)),403);
         $pedido=Pedido::with(['usuario','detalles.producto','venta','promocion'])->findOrFail($id);
+        if ($pedido->venta) \App\Services\Pagos\ContextoLecturaPagos::verificar([$pedido->venta]);
         return view('pedidos.show',compact('pedido'));
     }
 }

@@ -90,6 +90,34 @@ class CajaFormulariosTest extends TestCase
         $this->get('/admin/caja/cierres/'.$this->cierre.'/rectificacion')->assertOk()->assertSee('<fieldset disabled>', false);
     }
 
+    public function test_guion_academico_previsualiza_exige_observacion_guarda_diferencia_historial_y_rechaza_duplicado(): void
+    {
+        // Doble secuencial en SQLite :memory:, nunca habilita el adaptador MariaDB demo.
+        $this->permitir();
+        foreach ([['30.00', '30.00', '0.00', 'Efectivo'], ['20.00', '0.00', '20.00', 'QR'], ['50.00', '20.00', '30.00', 'Mixto']] as [$total, $cash, $qr, $metodo]) {
+            $pedido = DB::table('pedidos')->insertGetId(['usuario_id' => 1, 'fechaHora' => '2026-10-06 16:00:00', 'estado' => 'Pagado', 'total' => $total]);
+            DB::table('ventas')->insert(['pedido_id' => $pedido, 'usuario_id' => 1, 'fecha_hora' => '2026-10-06 16:00:00',
+                'total' => $total, 'monto_efectivo' => $cash, 'monto_qr' => $qr, 'metodo_pago' => $metodo,
+                'monto_recibido' => $total, 'cambio' => '0.00', 'estado' => 'Completado']);
+        }
+        $this->get('/admin/caja/previsualizacion?fecha=2026-10-06')->assertOk()->assertSee('100,00')->assertSee('50,00');
+        $this->confirmar(['efectivo_contado' => '48.00'])->assertStatus(422);
+        $this->assertSame(1, DB::table('cierre_cajas')->count());
+        $this->confirmar(['efectivo_contado' => '48.00', 'observacion' => 'Faltante ficticio de Bs 2'])->assertRedirect();
+        $version = CierreCajaVersion::orderByDesc('id')->firstOrFail();
+        $this->assertSame('100.00', $version->total_ventas);
+        $this->assertSame('50.00', $version->efectivo_esperado);
+        $this->assertSame('50.00', $version->qr_registrado);
+        $this->assertSame('-2.00', $version->diferencia);
+        $this->assertSame(3, $version->detalles()->count());
+        $this->get('/admin/caja/cierres/'.$version->cierre_caja_id)->assertOk()->assertSee('Faltante ficticio de Bs 2')->assertSee('-2,00');
+        $this->get('/admin/caja/cierres/'.$version->cierre_caja_id.'/versiones/'.$version->id)->assertOk();
+        $this->confirmar(['efectivo_contado' => '48.00', 'observacion' => 'Duplicado ficticio'])->assertStatus(422);
+        $this->assertSame(2, DB::table('cierre_cajas')->count());
+        $this->assertSame(1, DB::table('bitacoras')->where('accion', 'CIERRE_CAJA')->count());
+        $this->assertFalse((new CoordinadorCobrosCaja)->permiteCierreDefinitivo());
+    }
+
     public function test_csrf_ausente_invalido_y_valido_en_ambas_operaciones(): void
     {
         $this->permitir();

@@ -163,7 +163,7 @@ class ConsolidadosCajaTest extends TestCase
         $this->get('/admin/caja/anual?anio=2026')->assertOk()->assertSee('Bs 180.000.000.000.000,00');
         // SQLite no preserva todos los decimales grandes: el extremo con centavos se comprueba como cadenas exactas.
         $fila = (object)['total_ventas'=>'99999999999999.99','efectivo_esperado'=>'99999999999999.99',
-            'qr_registrado'=>'0.00','efectivo_contado'=>'99999999999999.98','diferencia'=>'-0.01','cantidad_ventas'=>1];
+            'qr_registrado'=>'0.00','tarjeta_registrado'=>'0.00','efectivo_contado'=>'99999999999999.98','diferencia'=>'-0.01','cantidad_ventas'=>1];
         $total = TotalesCajaPeriodo::cero();
         for ($i=0;$i<366;$i++) $total = TotalesCajaPeriodo::sumar($total,TotalesCajaPeriodo::version($fila));
         $this->assertSame('36599999999999996.34',$total['total_ventas']);

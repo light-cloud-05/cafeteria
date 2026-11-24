@@ -16,6 +16,7 @@ class Pedido extends Model
     public function usuario() { return $this->belongsTo(User::class, 'usuario_id')->withTrashed(); }
     public function detalles() { return $this->hasMany(DetallePedido::class); }
     public function venta() { return $this->hasOne(Venta::class); }
+    public function transaccionesPago() { return $this->hasMany(TransaccionPago::class); }
     public function promocion() { return $this->belongsTo(Promocion::class); }
     public function versionCobro(): string
     {

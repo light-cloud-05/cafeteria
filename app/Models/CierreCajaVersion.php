@@ -35,7 +35,7 @@ class CierreCajaVersion extends Model
 
     protected $fillable = [
         'cierre_caja_id', 'numero_version', 'responsable_id', 'registrado_en',
-        'total_ventas', 'efectivo_esperado', 'qr_registrado', 'efectivo_contado',
+        'total_ventas', 'efectivo_esperado', 'qr_registrado', 'tarjeta_registrado', 'efectivo_contado',
         'observacion', 'motivo_correccion',
     ];
 
@@ -45,6 +45,7 @@ class CierreCajaVersion extends Model
         'total_ventas' => 'decimal:2',
         'efectivo_esperado' => 'decimal:2',
         'qr_registrado' => 'decimal:2',
+        'tarjeta_registrado' => 'decimal:2',
         'efectivo_contado' => 'decimal:2',
         'diferencia' => 'decimal:2',
     ];

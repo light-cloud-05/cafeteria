@@ -42,6 +42,9 @@
             </header>
 
             <main class="contenido">
+                @if(\App\Services\Caja\AislamientoCajaDemo::solicitada())
+                    <div class="aviso error" role="status"><strong>DEMOSTRACIÓN ACADÉMICA — DATOS FICTICIOS</strong><br>Base exclusiva de defensa. Sin operaciones con dinero real.</div>
+                @endif
                 @if(auth()->user()->tienePermiso('ver_agotados'))
                     @php($agotados = \App\Models\Stock::whereColumn('stock_actual','<=','stock_minimo')->count())
                     @if($agotados > 0)<div class="aviso error" role="alert">{{ $agotados }} producto(s) requieren reposición. <a href="{{ route('admin.stock.agotados') }}">Consultar avisos</a></div>@endif

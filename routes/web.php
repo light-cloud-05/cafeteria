@@ -318,3 +318,16 @@ Route::middleware(['auth','permiso:cobrar_ventas'])->prefix('admin')->group(func
 });
 Route::get('/admin/ventas/siguiente/{id}',[VentaController::class,'siguiente'])->middleware(['auth','permiso:cobrar_ventas'])->whereNumber('id')->name('admin.venta.siguiente');
 Route::get('/admin/promociones/disponibles',[PromocionesController::class,'consultar'])->middleware('auth')->name('admin.promociones.consultar');
+
+// CU26: únicamente demostración aislada, nunca endpoints públicos de proveedor.
+Route::middleware(['auth', 'permiso:cobrar_ventas', \App\Http\Middleware\SimulacionPagoDisponible::class])
+    ->prefix('admin')->name('admin.pagos.')->group(function () {
+        Route::get('/pedidos/{id}/pago-simulado', [\App\Http\Controllers\PagosSimuladosController::class, 'crear'])->whereNumber('id')->name('crear');
+        Route::post('/pedidos/{id}/pago-simulado', [\App\Http\Controllers\PagosSimuladosController::class, 'store'])->whereNumber('id')->name('store');
+        Route::get('/pagos-simulados', [\App\Http\Controllers\PagosSimuladosController::class, 'historial'])->name('historial');
+        Route::get('/pagos-simulados/recuperar', [\App\Http\Controllers\PagosSimuladosController::class, 'recuperar'])->name('recuperar');
+        Route::get('/pagos-simulados/{referencia}', [\App\Http\Controllers\PagosSimuladosController::class, 'show'])->whereUuid('referencia')->name('show');
+        Route::post('/pagos-simulados/{referencia}/consultar', [\App\Http\Controllers\PagosSimuladosController::class, 'consultar'])->whereUuid('referencia')->name('consultar');
+        Route::post('/pagos-simulados/{referencia}/escenario', [\App\Http\Controllers\PagosSimuladosController::class, 'resolver'])->whereUuid('referencia')->name('resolver');
+        Route::post('/pagos-simulados/{referencia}/cancelar', [\App\Http\Controllers\PagosSimuladosController::class, 'cancelar'])->whereUuid('referencia')->name('cancelar');
+    });

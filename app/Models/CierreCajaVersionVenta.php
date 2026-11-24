@@ -34,7 +34,7 @@ class CierreCajaVersionVenta extends Model
 
     protected $fillable = [
         'cierre_caja_version_id', 'venta_id', 'fecha_cobro', 'metodo_pago',
-        'total', 'monto_efectivo', 'monto_qr',
+        'total', 'monto_efectivo', 'monto_qr', 'monto_tarjeta', 'origen',
     ];
 
     protected $casts = [
@@ -42,6 +42,7 @@ class CierreCajaVersionVenta extends Model
         'total' => 'decimal:2',
         'monto_efectivo' => 'decimal:2',
         'monto_qr' => 'decimal:2',
+        'monto_tarjeta' => 'decimal:2',
     ];
 
     protected static function booted(): void

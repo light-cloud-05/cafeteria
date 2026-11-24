@@ -92,6 +92,7 @@ final class CierreDiarioService
                         'total_ventas' => $resumen['total_ventas'],
                         'efectivo_esperado' => $resumen['efectivo_esperado'],
                         'qr_registrado' => $resumen['qr_registrado'],
+                        'tarjeta_registrado' => $resumen['tarjeta_registrado'],
                         'efectivo_contado' => ImporteCaja::decimal($contado),
                         'observacion' => $observacion === '' ? null : $observacion,
                     ]);
@@ -156,15 +157,16 @@ final class CierreDiarioService
         $hasta = $dia->addDay()->utc()->format('Y-m-d H:i:s');
         $consulta = DB::table('ventas as v')->leftJoin('pedidos as p', 'p.id', '=', 'v.pedido_id')
             ->where('v.estado', 'Completado')->where('v.fecha_hora', '>=', $desde)->where('v.fecha_hora', '<', $hasta)
-            ->select('v.id', 'v.fecha_hora', 'v.metodo_pago', 'v.estado', 'p.id as pedido_id', 'p.estado as estado_pedido')
+            ->select('v.id', 'v.fecha_hora', 'v.metodo_pago', 'v.origen', 'v.estado', 'p.id as pedido_id', 'p.estado as estado_pedido')
             // MariaDB devuelve DECIMAL exacto como texto; no hacer sumas PHP con floats.
-            ->selectRaw('CAST(v.total AS CHAR) AS total, CAST(v.monto_efectivo AS CHAR) AS efectivo, CAST(v.monto_qr AS CHAR) AS qr, CAST(p.total AS CHAR) AS total_pedido')
+            ->selectRaw('CAST(v.total AS CHAR) AS total, CAST(v.monto_efectivo AS CHAR) AS efectivo, CAST(v.monto_qr AS CHAR) AS qr, CAST(v.monto_tarjeta AS CHAR) AS tarjeta, CAST(p.total AS CHAR) AS total_pedido')
             ->orderBy('v.id');
         if ($bloquear) {
             $consulta->lockForUpdate();
         }
         $ventas = $consulta->get();
-        $total = $efectivo = $qr = 0;
+        \App\Services\Pagos\ContextoLecturaPagos::verificar($ventas);
+        $total = $efectivo = $qr = $tarjeta = 0;
         $instantaneas = [];
         foreach ($ventas as $venta) {
             try {
@@ -180,17 +182,21 @@ final class CierreDiarioService
                 $importe = ImporteCaja::centavos($venta->total);
                 $cash = ImporteCaja::centavos($venta->efectivo);
                 $transferencia = ImporteCaja::centavos($venta->qr);
+                $card = ImporteCaja::centavos($venta->tarjeta);
                 $pedido = ImporteCaja::centavos($venta->total_pedido);
-                $desglose = ImporteCaja::sumar($cash, $transferencia);
+                $desglose = ImporteCaja::sumar(ImporteCaja::sumar($cash, $transferencia), $card);
             } catch (InvalidArgumentException) {
                 throw ValidationException::withMessages(['ventas' => "La venta #{$venta->id} contiene importes inválidos."]);
             }
             $metodoValido = match ($venta->metodo_pago) {
-                'Efectivo' => $transferencia === 0,
-                'QR', 'Transferencia QR' => $cash === 0,
-                'Mixto' => $cash > 0 && $transferencia > 0,
+                'Efectivo' => $transferencia === 0 && $card === 0,
+                'QR', 'Transferencia QR' => $cash === 0 && $card === 0,
+                'QR_SIMULADO' => $cash === 0 && $card === 0 && $venta->origen === 'SIMULACION_LOCAL',
+                'TARJETA_SIMULADA' => $cash === 0 && $transferencia === 0 && $venta->origen === 'SIMULACION_LOCAL',
+                'Mixto' => $cash > 0 && $transferencia > 0 && $card === 0,
                 default => false,
             };
+            if ($venta->origen === 'SIMULACION_LOCAL') app(\App\Services\Pagos\AislamientoPagosSimulados::class)->verificar();
             if ($importe !== $desglose || !$metodoValido || $venta->estado !== 'Completado'
                 || !$venta->pedido_id || !in_array($venta->estado_pedido, ['Pagado', 'Completado'], true)
                 || $pedido !== $importe || $venta->fecha_hora < $desde || $venta->fecha_hora >= $hasta) {
@@ -200,6 +206,7 @@ final class CierreDiarioService
                 $total = ImporteCaja::sumar($total, $importe);
                 $efectivo = ImporteCaja::sumar($efectivo, $cash);
                 $qr = ImporteCaja::sumar($qr, $transferencia);
+                $tarjeta = ImporteCaja::sumar($tarjeta, $card);
             } catch (InvalidArgumentException $e) {
                 throw ValidationException::withMessages(['ventas' => $e->getMessage()]);
             }
@@ -209,6 +216,7 @@ final class CierreDiarioService
                 'fecha_cobro' => $fechaCobro,
                 'metodo_pago' => $venta->metodo_pago, 'total' => ImporteCaja::decimal($importe),
                 'monto_efectivo' => ImporteCaja::decimal($cash), 'monto_qr' => ImporteCaja::decimal($transferencia),
+                'monto_tarjeta' => ImporteCaja::decimal($card), 'origen' => $venta->origen,
             ];
         }
         if ($ventas->isNotEmpty() && DB::table('cierre_caja_version_ventas as d')
@@ -223,7 +231,7 @@ final class CierreDiarioService
         return ['resumen' => [
             'fecha_operativa' => $dia->toDateString(), 'cantidad_ventas' => $ventas->count(),
             'total_ventas' => ImporteCaja::decimal($total), 'efectivo_esperado' => ImporteCaja::decimal($efectivo),
-            'qr_registrado' => ImporteCaja::decimal($qr),
+            'qr_registrado' => ImporteCaja::decimal($qr), 'tarjeta_registrado' => ImporteCaja::decimal($tarjeta),
         ], 'instantaneas' => $instantaneas];
     }
 }

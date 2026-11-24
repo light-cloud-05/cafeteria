@@ -19,10 +19,14 @@ try {
         || !str_starts_with(basename($dir), 'karma-caja-it-')) {
         throw new RuntimeException('Invocación de worker inválida.');
     }
+    $tarea = json_decode(file_get_contents($dir.'/'.$worker.'-task.json'), true, flags: JSON_THROW_ON_ERROR);
+    $esperada = Guard::validarVersionEsperada((string) ($tarea['version_esperada'] ?? ''));
+    if ($esperada !== Guard::versionEsperada()) {
+        throw new RuntimeException('Versión esperada del worker diferente del entorno heredado.');
+    }
     [$app, $conexion, $meta] = Guard::boot();
     require __DIR__.'/Runtime.php';
     Guard::exigirPreparada();
-    $tarea = json_decode(file_get_contents($dir.'/'.$worker.'-task.json'), true, flags: JSON_THROW_ON_ERROR);
     if ($tarea['worker'] !== $worker) {
         throw new RuntimeException('Identidad de worker inválida.');
     }
@@ -32,7 +36,8 @@ try {
     Runtime::actor();
     Runtime::reloj($tarea['hora']);
     Runtime::instalarCoordinacion($tarea, $dir);
-    Runtime::senal($dir, $worker.'-ready', ['sesion' => (int) $meta['sesion']]);
+    Runtime::senal($dir, $worker.'-ready', ['sesion' => (int) $meta['sesion'],
+        'version_esperada' => $meta['version_esperada'], 'version_real' => $meta['version_servidor']]);
     if ($tarea['accion'] === 'sale') {
         Runtime::cobrar((int) $tarea['pedido']);
     } elseif ($tarea['accion'] === 'close') {

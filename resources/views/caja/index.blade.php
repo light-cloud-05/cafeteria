@@ -16,12 +16,12 @@
 </form>
 <p>Los filtros de fecha operativa excluyen los históricos sin fecha.</p>
 <p id="ayuda-tabla-cierres">En pantallas pequeñas, desplaza la tabla horizontalmente para consultar todos los importes.</p>
-<div class="tarjeta tabla-contenedor caja-tabla caja-listado" role="region" aria-label="Cierres y versión vigente" aria-describedby="ayuda-tabla-cierres" tabindex="0"><table><caption>Cierres y versión vigente</caption><thead><tr><th scope="col">Registro</th><th scope="col">Fecha / tipo</th><th scope="col">Versión</th><th scope="col">Responsable</th><th scope="col">Total vendido</th><th scope="col">Efectivo esperado</th><th scope="col">QR</th><th scope="col">Efectivo contado</th><th scope="col">Diferencia</th></tr></thead><tbody>
+<div class="tarjeta tabla-contenedor caja-tabla caja-listado" role="region" aria-label="Cierres y versión vigente" aria-describedby="ayuda-tabla-cierres" tabindex="0"><table><caption>Cierres y versión vigente</caption><thead><tr><th scope="col">Registro</th><th scope="col">Fecha / tipo</th><th scope="col">Versión</th><th scope="col">Responsable</th><th scope="col">Total vendido</th><th scope="col">Efectivo esperado</th><th scope="col">QR</th><th scope="col">Tarjeta</th><th scope="col">Efectivo contado</th><th scope="col">Diferencia</th></tr></thead><tbody>
 @forelse($cierres as $cierre)
 @php($vigente = $cierre->versionVigente)
 <tr><td><a href="{{ route('admin.caja.show', $cierre->id) }}">Ver #{{ $cierre->id }}</a></td><td>@if($cierre->fecha_operativa)<span class="etiqueta activa">Oficial</span><p>{{ $cierre->fecha_operativa->format('d/m/Y') }}</p>@else<span class="etiqueta inactiva">Histórico no oficial</span>@endif</td><td>{{ $vigente?->numero_version ?? 'Sin versión' }}</td><td>{{ $vigente?->responsable?->nombreCompleto ?? $cierre->usuario?->nombreCompleto ?? 'No disponible' }}</td>
-@foreach([$vigente?->total_ventas, $vigente?->efectivo_esperado, $vigente?->qr_registrado, $vigente?->efectivo_contado, $vigente?->diferencia] as $importe)<td class="caja-importe">{{ \App\Support\ImporteCajaVista::formatear($importe) }}</td>@endforeach</tr>
-@empty<tr><td class="caja-vacio" colspan="9">No hay cierres para los filtros seleccionados.</td></tr>@endforelse
+@foreach([$vigente?->total_ventas, $vigente?->efectivo_esperado, $vigente?->qr_registrado, $vigente?->tarjeta_registrado, $vigente?->efectivo_contado, $vigente?->diferencia] as $importe)<td class="caja-importe">{{ \App\Support\ImporteCajaVista::formatear($importe) }}</td>@endforeach</tr>
+@empty<tr><td class="caja-vacio" colspan="10">No hay cierres para los filtros seleccionados.</td></tr>@endforelse
 </tbody></table></div>
 @include('caja._paginacion', ['paginador' => $cierres, 'etiqueta' => 'Páginas de cierres'])
 </div>

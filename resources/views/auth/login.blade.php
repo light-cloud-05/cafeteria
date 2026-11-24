@@ -11,6 +11,9 @@
 </head>
 <body>
     <main class="login">
+        @if(\App\Services\Caja\AislamientoCajaDemo::solicitada())
+            <p role="status"><strong>DEMOSTRACIÓN ACADÉMICA — DATOS FICTICIOS</strong></p>
+        @endif
         <header class="marca marca-auth">
             <img class="logo-auth" src="{{ asset('images/karma.png') }}" alt="Cafetería Karma">
             <p class="marca-descripcion">Un café. Un momento. Todo en orden.</p>

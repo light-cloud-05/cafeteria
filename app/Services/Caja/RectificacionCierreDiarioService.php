@@ -91,7 +91,7 @@ final class RectificacionCierreDiarioService
                         $op->despues = [
                             'numero_version' => $base->numero_version + 1, 'responsable_id' => $actor->getKey(),
                             'total_ventas' => $base->total_ventas, 'efectivo_esperado' => $base->efectivo_esperado,
-                            'qr_registrado' => $base->qr_registrado, 'efectivo_contado' => ImporteCaja::decimal($contado),
+                            'tarjeta_registrado' => $base->tarjeta_registrado, 'qr_registrado' => $base->qr_registrado, 'efectivo_contado' => ImporteCaja::decimal($contado),
                             'diferencia' => ImporteCaja::decimal($contado - ImporteCaja::centavos($base->efectivo_esperado)),
                             'cantidad_ventas' => $detalles->count(),
                         ];
@@ -99,7 +99,7 @@ final class RectificacionCierreDiarioService
                             'numero_version' => $base->numero_version + 1, 'responsable_id' => $actor->getKey(),
                             'registrado_en' => DiaOperativoCaja::ahora(),
                             'total_ventas' => $base->total_ventas, 'efectivo_esperado' => $base->efectivo_esperado,
-                            'qr_registrado' => $base->qr_registrado, 'efectivo_contado' => ImporteCaja::decimal($contado),
+                            'tarjeta_registrado' => $base->tarjeta_registrado, 'qr_registrado' => $base->qr_registrado, 'efectivo_contado' => ImporteCaja::decimal($contado),
                             'observacion' => $observacion, 'motivo_correccion' => $motivo,
                         ]);
                         if (!$nueva->exists) {
@@ -143,21 +143,23 @@ final class RectificacionCierreDiarioService
         return ['version_id' => $version->id, 'numero_version' => $version->numero_version,
             'responsable_id' => $version->responsable_id,
             'total_ventas' => $version->total_ventas, 'efectivo_esperado' => $version->efectivo_esperado,
-            'qr_registrado' => $version->qr_registrado, 'efectivo_contado' => $version->efectivo_contado,
+            'tarjeta_registrado' => $version->tarjeta_registrado, 'qr_registrado' => $version->qr_registrado, 'efectivo_contado' => $version->efectivo_contado,
             'diferencia' => $version->diferencia, 'cantidad_ventas' => $cantidad];
     }
 
     private function instantaneas(CierreCajaVersion $base, $detalles, string $fecha): array
     {
-        $total = $efectivo = $qr = 0;
+        $total = $efectivo = $qr = $tarjeta = 0;
         $copias = [];
         try {
             foreach ($detalles as $detalle) {
                 $t = ImporteCaja::centavos($detalle->total);
                 $e = ImporteCaja::centavos($detalle->monto_efectivo);
                 $q = ImporteCaja::centavos($detalle->monto_qr);
+                $card = ImporteCaja::centavos($detalle->monto_tarjeta);
+                if ($detalle->origen === 'SIMULACION_LOCAL') app(\App\Services\Pagos\AislamientoPagosSimulados::class)->verificar();
                 $cobro = CarbonImmutable::createFromFormat('!Y-m-d H:i:s', $detalle->getRawOriginal('fecha_cobro'), 'UTC');
-                if ($t !== ImporteCaja::sumar($e, $q) || !$cobro
+                if ($t !== ImporteCaja::sumar(ImporteCaja::sumar($e, $q), $card) || !$cobro
                     || $cobro->format('Y-m-d H:i:s') !== $detalle->getRawOriginal('fecha_cobro')
                     || $cobro->setTimezone(DiaOperativoCaja::ZONA)->toDateString() !== $fecha) {
                     throw new InvalidArgumentException('Instantánea histórica inconsistente.');
@@ -165,11 +167,12 @@ final class RectificacionCierreDiarioService
                 $total = ImporteCaja::sumar($total, $t);
                 $efectivo = ImporteCaja::sumar($efectivo, $e);
                 $qr = ImporteCaja::sumar($qr, $q);
+                $tarjeta = ImporteCaja::sumar($tarjeta, $card);
                 $copias[] = ['venta_id' => $detalle->venta_id, 'fecha_cobro' => $cobro, 'metodo_pago' => $detalle->metodo_pago,
-                    'total' => $detalle->total, 'monto_efectivo' => $detalle->monto_efectivo, 'monto_qr' => $detalle->monto_qr];
+                    'total' => $detalle->total, 'monto_efectivo' => $detalle->monto_efectivo, 'monto_qr' => $detalle->monto_qr, 'monto_tarjeta' => $detalle->monto_tarjeta, 'origen' => $detalle->origen];
             }
             if (ImporteCaja::decimal($total) !== $base->total_ventas || ImporteCaja::decimal($efectivo) !== $base->efectivo_esperado
-                || ImporteCaja::decimal($qr) !== $base->qr_registrado) {
+                || ImporteCaja::decimal($qr) !== $base->qr_registrado || ImporteCaja::decimal($tarjeta) !== $base->tarjeta_registrado) {
                 throw new InvalidArgumentException('Los importes históricos no concilian con sus instantáneas.');
             }
         } catch (\Exception) {
